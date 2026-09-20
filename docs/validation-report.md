@@ -63,3 +63,19 @@
 下调基线是对更旧工具链的兼容性声明，不是对更旧工具链的长期承诺：一旦引入 1.23 之后的语言特性或标准库 API，就需要同步提升该声明。反过来，本次是在真实的 go1.23.12 工具链上跑通全部离线检查后才发现下调可行，不是为了让测试通过而改声明。
 
 本次复验的原始输出保存在仓库外的临时目录，没有加入仓库。仓库中的三份原始材料仍是 go1.27.0 那一次运行的产物：`validation.log`（原始验证输出）、`test-results.jsonl`（逐项 Go 测试事件）、`coverage.out`（语句覆盖明细）。
+
+## 2026-09-20 真实 API 复验（Windows/amd64，go1.27.0）
+
+用真实 API Key 对 `https://api.typesafe.ai` 做了联网复验，发现并修复了一个只在线上才暴露的问题。
+
+| 验证 | 结果 |
+|---|---|
+| `TYPESAFE_LIVE_TEST=1 go test -run '^TestLiveAPI$'` | PASS；`ListModels` 返回 `jev-latest` / `jev-preview`，`SystemOne` 命中 `jev-1.13.0` |
+| `go run ./examples/models`（真实） | PASS |
+| `go run ./examples/basic -text '...'`（真实，8 次） | 修复后 8/8 PASS；修复前 5 次中 4 次失败 |
+| `go run ./examples/agent -text '...'`（真实，3 次） | PASS，返回只读建议 |
+| `go test ./...`、`go vet ./...`、`gofmt -l .` | PASS |
+
+**修复内容。** `ValidateFor` 原先以绝对 1e-3 校验 `score` 与概率加权期望一致。线上 `jev-1.13.0` 的 probabilities 按两位小数舍入、`score` 为连续估计，二者独立给出，实测偏差恒为 ±0.01（5 次中 4 次超出 1e-3），导致 README 第 2 节记录的联网示例在多数真实评估上直接报错退出。容差改为按等级数推导的 `0.005 * Σ等级索引`（下限 1e-3），覆盖舍入上界而不放宽概率和与选项集合的检查。同时 `TestLiveAPI` 增加了 Score 问题——它原先只发 Noul，无法覆盖该分支，所以离线全绿却测不到这个线上缺陷。
+
+本次联网产生了真实调用与相应费用。仍**没有**测量模型准确率，也**没有**与上游 Python 套件做行为对比。

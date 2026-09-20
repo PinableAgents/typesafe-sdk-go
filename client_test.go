@@ -472,11 +472,17 @@ func TestLiveAPI(t *testing.T) {
 		t.Fatal("empty models")
 	}
 	req := minimalRequest()
+	// A score question exercises the weighted-value consistency check, which a
+	// noul-only request cannot reach.
+	req.Questions["scope"] = ScoreLevels("How broad is the task?", "One local issue.", "One component.", "Several components.")
 	result, err := c.SystemOne(ctx, req)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := result.ValidateFor(req.Questions); err != nil {
 		t.Fatal(err)
+	}
+	if _, ok := result.Scores["scope"]; !ok {
+		t.Fatal("score answer missing")
 	}
 }

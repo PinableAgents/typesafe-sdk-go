@@ -145,6 +145,40 @@ func TestValidateForSemanticMismatch(t *testing.T) {
 	}
 }
 
+func TestScoreAcceptsRoundingDeviation(t *testing.T) {
+	// Mirrors a real service answer: three levels, probabilities rounded to two
+	// decimals, and a continuous score that is one rounding step off the
+	// weighted value. Tolerance for three levels is 0.005 * (0 + 1 + 2) = 0.015.
+	const body = `{"model":"jev","answers":{"scope":{"type":"score","score":0.46,` +
+		`"confidence":0.5,"legend":{"0":"One local issue.","1":"One component.","2":"Several components."},` +
+		`"probabilities":{"0":0.54,"1":0.46,"2":0.0}}},"usage":{}}`
+	questions := Questions{"scope": ScoreLevels("How broad?", "One local issue.", "One component.", "Several components.")}
+	for _, gap := range []float64{0.005, 0.01} {
+		var r SystemOneResponse
+		if err := json.Unmarshal([]byte(body), &r); err != nil {
+			t.Fatal(err)
+		}
+		v := r.Scores["scope"]
+		v.Score += gap
+		r.Scores["scope"] = v
+		if err := r.ValidateFor(questions); err != nil {
+			t.Errorf("gap %.3f rejected: %v", gap, err)
+		}
+	}
+	for _, gap := range []float64{0.02, 0.5} {
+		var r SystemOneResponse
+		if err := json.Unmarshal([]byte(body), &r); err != nil {
+			t.Fatal(err)
+		}
+		v := r.Scores["scope"]
+		v.Score += gap
+		r.Scores["scope"] = v
+		if err := r.ValidateFor(questions); err == nil {
+			t.Errorf("gap %.3f accepted", gap)
+		}
+	}
+}
+
 func TestModelsValidation(t *testing.T) {
 	for _, data := range []string{`[]`, `{}`, `{"models":null}`, `{"models":[{}]}`, `{"models":[{"name":"x"}]}`, `{"models":[{"name":"x","description":"x","release_date":null}]}`} {
 		var r ListModelsResponse

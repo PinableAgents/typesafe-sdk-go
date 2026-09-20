@@ -284,7 +284,12 @@ func (r *SystemOneResponse) ValidateFor(questions Questions) error {
 			if math.Abs(sum-1) > 1e-3 {
 				return invalidResponse(path+".probabilities", "probabilities do not sum to one")
 			}
-			if math.IsNaN(value.Score) || math.IsInf(value.Score, 0) || math.Abs(value.Score-weighted) > 1e-3 {
+			// The service reports probabilities rounded to two decimals while the
+			// score is a continuous estimate. Each level may be off by up to 0.005,
+			// so the weighted value may shift by up to 0.005 * sum(level indexes).
+			levels := len(criteria)
+			tolerance := math.Max(1e-3, 0.005*float64(levels*(levels-1)/2))
+			if math.IsNaN(value.Score) || math.IsInf(value.Score, 0) || math.Abs(value.Score-weighted) > tolerance {
 				return invalidResponse(path+".score", "score is inconsistent with the distribution")
 			}
 		default:
