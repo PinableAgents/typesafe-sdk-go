@@ -1,0 +1,47 @@
+name: TypeSafe SDK Component Validation
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      live:
+        description: 'Run real TypeSafe API tests (normally 24 HTTP calls, hard cap 30)'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: typesafe-validation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Offline checks
+        if: ${{ github.event_name != 'workflow_dispatch' || !inputs.live }}
+        run: python3 scripts/validate_typesafe.py --output validation-results/ci
+      - name: Offline checks and real API components
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.live }}
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+        run: python3 scripts/validate_typesafe.py --live --output validation-results/ci
+      - name: Upload sanitized validation evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: typesafe-validation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: validation-results/ci/
+          if-no-files-found: warn
+          retention-days: 7
