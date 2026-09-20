@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       live:
-        description: 'Run real TypeSafe API tests (normally 24 HTTP calls, hard cap 30)'
+        description: 'Run real TypeSafe API tests (normally 28 HTTP calls, hard cap 36)'
         type: boolean
         required: true
         default: false
