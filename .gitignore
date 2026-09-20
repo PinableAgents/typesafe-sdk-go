@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+coverage.out
+coverage.html
+# docs/coverage.out is a delivered artifact referenced by docs/validation-report.md
+!docs/coverage.out
+*.test
+*.exe
+.DS_Store

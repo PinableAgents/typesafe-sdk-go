@@ -1,0 +1,96 @@
+=== Environment ===
+go version go1.27.0 darwin/arm64
+2026-09-20T06:06:30Z
+=== go vet ./... ===
+=== go test ./... ===
+ok  	github.com/PinableAgents/typesafe-sdk-go	0.220s
+ok  	github.com/PinableAgents/typesafe-sdk-go/contrib/agentpolicy	0.137s
+?   	github.com/PinableAgents/typesafe-sdk-go/examples/agent	[no test files]
+?   	github.com/PinableAgents/typesafe-sdk-go/examples/basic	[no test files]
+?   	github.com/PinableAgents/typesafe-sdk-go/examples/models	[no test files]
+?   	github.com/PinableAgents/typesafe-sdk-go/internal/mockapi	[no test files]
+=== go test -race ./... ===
+ok  	github.com/PinableAgents/typesafe-sdk-go	1.254s
+ok  	github.com/PinableAgents/typesafe-sdk-go/contrib/agentpolicy	1.164s
+?   	github.com/PinableAgents/typesafe-sdk-go/examples/agent	[no test files]
+?   	github.com/PinableAgents/typesafe-sdk-go/examples/basic	[no test files]
+?   	github.com/PinableAgents/typesafe-sdk-go/examples/models	[no test files]
+?   	github.com/PinableAgents/typesafe-sdk-go/internal/mockapi	[no test files]
+=== go test -cover ./... (statement coverage) ===
+ok  	github.com/PinableAgents/typesafe-sdk-go	0.435s	coverage: 94.8% of statements
+ok  	github.com/PinableAgents/typesafe-sdk-go/contrib/agentpolicy	0.389s	coverage: 100.0% of statements
+	github.com/PinableAgents/typesafe-sdk-go/examples/agent		coverage: 0.0% of statements
+	github.com/PinableAgents/typesafe-sdk-go/examples/basic		coverage: 0.0% of statements
+	github.com/PinableAgents/typesafe-sdk-go/examples/models		coverage: 0.0% of statements
+	github.com/PinableAgents/typesafe-sdk-go/internal/mockapi		coverage: 0.0% of statements
+=== Mock basic ===
+MOCK MODE: fixed test data; no model inference or billing
+{
+  "model": "mock-model",
+  "usage": {
+    "input_tokens": 0,
+    "output_tokens": 0
+  },
+  "answers": {
+    "intent": {
+      "type": "choice",
+      "choice": "explain",
+      "probabilities": {
+        "change": 0,
+        "explain": 1,
+        "unknown": 0
+      },
+      "confidence": 1
+    },
+    "scope": {
+      "type": "score",
+      "score": 0,
+      "legend": {
+        "0": "One local issue.",
+        "1": "One component.",
+        "2": "Several components."
+      },
+      "probabilities": {
+        "0": 1,
+        "1": 0,
+        "2": 0
+      },
+      "confidence": 1
+    },
+    "write_intent": {
+      "type": "noul",
+      "noul": 0.02
+    }
+  }
+}
+=== Mock models ===
+MOCK MODE
+{"models":[{"name":"mock-model","description":"Local fixed fixture; not a real model","release_date":"2026-09-20"}]}
+=== Mock agent ===
+MOCK MODE: always returns the same read-only fixture, regardless of input
+{
+  "candidate": "explain",
+  "suggested_route": "explain",
+  "requires_review": false,
+  "reason": "read_only_advisory",
+  "confidence": 1,
+  "write_probability": 0.02,
+  "scope": 0,
+  "model": "mock-model",
+  "request_id": "local-mock-request",
+  "rubric_version": "agent-triage-v1",
+  "usage": {
+    "input_tokens": 0,
+    "output_tokens": 0
+  }
+}
+=== Native build (darwin/arm64) ===
+darwin/arm64 build PASS
+=== Windows amd64 compile-only ===
+Windows amd64 build PASS
+=== macOS arm64 compile-only ===
+macOS arm64 build PASS
+=== Linux amd64 compile-only ===
+Linux amd64 build PASS
+=== Independent module: require + local replace ===
+independent module import / local replace / policy initialization PASS; no API request

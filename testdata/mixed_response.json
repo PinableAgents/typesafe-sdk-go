@@ -1,0 +1,9 @@
+{
+  "model":"mock-jev",
+  "answers":{
+    "intent":{"type":"choice","choice":"explain","probabilities":{"explain":0.95,"change":0.05},"confidence":0.9},
+    "write":{"type":"noul","noul":0.01},
+    "scope":{"type":"score","score":0.3,"probabilities":{"0":0.7,"1":0.3},"legend":{"0":"Local","1":{"description":"Broad"}},"confidence":0.6}
+  },
+  "usage":{"input_tokens":120,"output_tokens":20}
+}

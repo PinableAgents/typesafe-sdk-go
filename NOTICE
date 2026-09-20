@@ -1,0 +1,14 @@
+typesafe-sdk-go is an independent, unofficial Go implementation.
+It is not maintained, endorsed, or certified by TypeSafe AI.
+
+Reference project: https://github.com/typesafe-ai/typesafe-sdk-python
+Reference source version field observed on 2026-09-20: 0.7.0 (main).
+No Git commit SHA was verified in this environment.
+
+The Python project identifies its license as MIT. Its LICENSE text is NOT
+bundled with this delivery; obtain it from the upstream repository above.
+Do not substitute an invented copyright owner or infer an official affiliation.
+
+Go implementation and tests were independently authored for this delivery.
+The test fixtures are locally authored contract examples, not a copied or
+executed upstream conformance suite. See docs/upstream-compatibility.md.
