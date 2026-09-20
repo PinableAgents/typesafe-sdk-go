@@ -84,7 +84,7 @@ go mod edit -replace=github.com/PinableAgents/typesafe-sdk-go=../typesafe-sdk-go
 
 添加 import 和实际调用后运行 `go mod tidy`。不需要重新初始化 Agent module，也不应在正式远程依赖中永久依赖你机器的绝对路径。
 
-module 路径 `github.com/PinableAgents/typesafe-sdk-go` 已经是最终路径，不需要再改。但本 SDK 的源码尚未推送到该仓库、也没有版本 tag，所以现在不要尝试 `go get github.com/PinableAgents/typesafe-sdk-go`，它取不到本 SDK；推送源码并打 tag 之后才成立。也不要把它和官方地址 `github.com/typesafe-ai/typesafe-sdk-python` 混淆，两者无关。
+module 路径 `github.com/PinableAgents/typesafe-sdk-go` 已经是最终路径，不需要再改，仓库已发布 `v0.1.0`，可直接 `go get github.com/PinableAgents/typesafe-sdk-go@v0.1.0`。不要把它和官方地址 `github.com/typesafe-ai/typesafe-sdk-python` 混淆，两者无关。
 
 ## 五、启动时初始化一个共享客户端
 
