@@ -18,6 +18,7 @@ import (
 
 	typesafe "github.com/PinableAgents/typesafe-sdk-go"
 	"github.com/PinableAgents/typesafe-sdk-go/contrib/agentpolicy"
+	"github.com/PinableAgents/typesafe-sdk-go/contrib/agenttool"
 )
 
 type agentScenario struct {
@@ -326,6 +327,51 @@ func runPublicComponents(t *testing.T, cfg typesafe.Config, m *telemetry) {
 			// claim accuracy from a tiny sample or turn low confidence into approval.
 		})
 	}
+
+	tools, err := agenttool.New(client)
+	if err != nil {
+		fatalSafe(t, err)
+	}
+	for _, tc := range []struct {
+		name, tool string
+		arguments  any
+		mustReview bool
+	}{
+		{"AgentTool_Models", agenttool.ListModels, map[string]any{}, false},
+		{"AgentTool_Mixed", agenttool.Evaluate, map[string]any{
+			"state":     "Explain one Go function without changing files.",
+			"questions": scenarios()[3].req.Questions,
+		}, false},
+		{"AgentTool_ReadOnly", agenttool.RouteTask, map[string]any{"task": agentScenarios[0].Text}, false},
+		{"AgentTool_Mutation", agenttool.RouteTask, map[string]any{"task": agentScenarios[2].Text}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			input, err := json.Marshal(tc.arguments)
+			if err != nil {
+				fatalSafe(t, err)
+			}
+			result := tools.Call(ctx, tc.tool, input)
+			if !result.OK || result.Error != nil {
+				t.Fatalf("agent tool failed: tool=%s error=%+v", tc.tool, result.Error)
+			}
+			switch data := result.Data.(type) {
+			case *typesafe.ListModelsResponse:
+				if len(data.Models) == 0 {
+					t.Fatal("empty models")
+				}
+			case *typesafe.SystemOneResponse:
+				checkResult(t, data, scenarios()[3].req.Questions, m)
+			case agentpolicy.Decision:
+				if tc.mustReview && !data.RequiresReview {
+					t.Error("mutation task did not require review")
+				}
+				m.usage(data.Usage)
+				t.Logf("route=%s review=%t", data.SuggestedRoute, data.RequiresReview)
+			default:
+				t.Fatalf("unexpected result data %T", result.Data)
+			}
+		})
+	}
 	t.Run("CanceledContext_NoRequest", func(t *testing.T) {
 		canceled, done := context.WithCancel(ctx)
 		done()
@@ -360,11 +406,11 @@ func TestTypeSafeComponentsLive(t *testing.T) {
 	}
 	tr := http.DefaultTransport.(*http.Transport).Clone()
 	defer tr.CloseIdleConnections()
-	guard := &guardTransport{base: tr, max: 30}
+	guard := &guardTransport{base: tr, max: 36}
 	m := &telemetry{}
 	cfg := typesafe.Config{APIKey: key, BaseURL: typesafe.DefaultBaseURL, Model: os.Getenv(typesafe.DefaultModelEnv), Timeout: 20 * time.Second, Retry: &typesafe.RetryPolicy{}, HTTPClient: &http.Client{Transport: guard}, Observer: m.observe}
 	t.Cleanup(func() {
-		t.Logf("live_transport_attempts=%d hard_cap=30; unsuccessful connections are not successful API calls", guard.calls.Load())
+		t.Logf("live_transport_attempts=%d hard_cap=36; unsuccessful connections are not successful API calls", guard.calls.Load())
 	})
 	runPublicComponents(t, cfg, m)
 }

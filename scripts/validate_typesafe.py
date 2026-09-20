@@ -4,7 +4,7 @@
 Python 3.9+ and the Go toolchain required by the repository are needed.
 Default: offline API tests (Go may still download its toolchain/dependencies).
 --live: after offline checks pass, prompt securely or read TYPESAFE_API_KEY,
-then run only the explicit component live suite (24 normal HTTP calls, cap 30).
+then run only the explicit component live suite (28 normal HTTP calls, cap 36).
 """
 from __future__ import annotations
 
@@ -170,6 +170,7 @@ def main() -> int:
         ("08-mock-basic", ["go", "run", "./examples/basic", "-mock"], 180),
         ("09-mock-models", ["go", "run", "./examples/models", "-mock"], 180),
         ("10-mock-agent", ["go", "run", "./examples/agent", "-mock"], 180),
+        ("10b-tool-definitions", ["go", "run", "./cmd/typesafe-tool", "--list"], 180),
     ]
     offline_ok = True
     for name, command, timeout in offline:
