@@ -2,7 +2,7 @@
 
 **独立、非官方的 TypeSafe Go SDK。** 本版以 2026-09-20 读取的官方 Python SDK `main`（`pyproject.toml` 标示 `0.7.0`）的公开接口和关键实现为参考，以 Go 重写；不依赖 Python，不包含或本地运行 Jev 模型。
 
-当前交付版本：`0.1.0`。module 路径为 `github.com/PinableAgents/typesafe-sdk-go`，与该仓库地址一致，源码已推送并打上 `v0.1.0` tag，可直接作为远程依赖引用。本 SDK 不是 TypeSafe 官方认证的 SDK。
+当前交付版本：`0.2.0`。module 路径为 `github.com/PinableAgents/typesafe-sdk-go`，与该仓库地址一致，源码已推送并打上 `v0.2.0` tag，可直接作为远程依赖引用。本 SDK 不是 TypeSafe 官方认证的 SDK。
 
 ## 包含什么
 
@@ -85,10 +85,10 @@ fmt.Println(result.Nouls["write"].Noul)
 
 ## 4. 在已有 Agent 工程中本地引用
 
-module 路径是 `github.com/PinableAgents/typesafe-sdk-go`，与该 GitHub 仓库地址一致，已发布 `v0.1.0`。只想稳定引用就直接用远程依赖：
+module 路径是 `github.com/PinableAgents/typesafe-sdk-go`，与该 GitHub 仓库地址一致，已发布 `v0.2.0`。只想稳定引用就直接用远程依赖：
 
 ```bash
-go get github.com/PinableAgents/typesafe-sdk-go@v0.1.0
+go get github.com/PinableAgents/typesafe-sdk-go@v0.2.0
 ```
 
 下面这节留给另一种情况：你要改 SDK 源码、或想脱离版本发布节奏跟进最新提交。建议目录如下：
@@ -127,7 +127,7 @@ go test ./...
 
 require 里的 `@v0.0.0` 只是满足 Go 的语法要求，实际内容始终取自 replace 指向的本地目录，与 SDK 的真实版本号无关。
 
-**不带 tag 拉取会得到伪版本。** 形如 `v0.0.0-20260920061433-98f2c5d654e7` 的版本号直接绑定某个 commit，内容随分支推进而变，不适合作为生产依赖锁定。生产请固定 `@v0.1.0` 这类正式 tag。
+**不带 tag 拉取会得到伪版本。** 形如 `v0.0.0-20260920061433-98f2c5d654e7` 的版本号直接绑定某个 commit，内容随分支推进而变，不适合作为生产依赖锁定。生产请固定 `@v0.2.0` 这类正式 tag。
 
 ## 5. 重要默认行为
 
