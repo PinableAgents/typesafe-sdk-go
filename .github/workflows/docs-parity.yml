@@ -15,13 +15,14 @@ concurrency:
 
 jobs:
   quality:
+    name: Full coverage (Go 1.23)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version: '1.23.x'
           cache: false
@@ -31,35 +32,62 @@ jobs:
           git rev-parse HEAD > qa-results/commit.txt
           go version > qa-results/toolchain.txt
           git archive --format=tar.gz HEAD > qa-results/source.tar.gz
-      - name: Vet and build all packages
+      - name: Vet, build and formatting
         run: |
+          test -z "$(gofmt -l $(git ls-files '*.go'))"
           go vet ./...
           go build ./...
+          python3 -m unittest discover -s scripts -p 'test_check_*.py' -v
       - name: Race tests and complete coverage
         shell: bash
         run: |
           set -o pipefail
           go test -race -count=1 -shuffle=on -coverpkg=./... -covermode=atomic -coverprofile=qa-results/coverage.out -json ./... | tee qa-results/test-results.jsonl
           go tool cover -func=qa-results/coverage.out | tee qa-results/coverage-functions.txt
-      - name: Exact statement coverage gate
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          rows = [line.split() for line in Path('qa-results/coverage.out').read_text().splitlines()[1:] if line.strip()]
-          assert rows, 'empty coverage profile'
-          missed = [row for row in rows if int(row[1]) > 0 and int(row[2]) == 0]
-          total = sum(int(row[1]) for row in rows)
-          assert total > 0, 'empty statement denominator'
-          for row in missed:
-              print('UNCOVERED', *row)
-          assert not missed, f'{sum(int(row[1]) for row in missed)}/{total} statements uncovered; exact 100% required'
-          print(f'PASS: {total}/{total} statements covered')
-          PY
+      - name: Exact source-verified statement coverage
+        run: python3 scripts/check_coverage.py qa-results/coverage.out --output qa-results/coverage-summary.json
       - name: Upload reproducible evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: docs-parity-${{ github.run_id }}-${{ github.run_attempt }}
           path: qa-results/
+          retention-days: 7
+          if-no-files-found: error
+  python-contract:
+    name: Official Python SDK differential contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TYPESAFE_LOG_LEVEL: off
+      TYPESAFE_LIVE_TEST: '0'
+      TYPESAFE_COMPONENTS_LIVE: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: '1.23.x'
+          cache: false
+      - name: Install reviewed official Python revision
+        run: |
+          python3 -m venv .venv-parity
+          .venv-parity/bin/pip install 'git+https://github.com/typesafe-ai/typesafe-sdk-python.git@0ffd094c72ed9445223060b24ffd7a56aa781fb4'
+      - name: Compare Go and official Python with mock HTTP only
+        run: |
+          mkdir -p parity-results
+          git rev-parse HEAD > parity-results/commit.txt
+          .venv-parity/bin/pip freeze > parity-results/python-dependencies.txt
+          TYPESAFE_PARITY_OUTPUT="$PWD/parity-results/go.json" go test -count=1 -run '^TestOfficialSDKCorpus$' .
+          .venv-parity/bin/python scripts/compare_python_sdk.py --go parity-results/go.json --output parity-results/python.json
+      - name: Collect current documentation fingerprints (proposal only)
+        run: python3 scripts/check_doc_drift.py --snapshot parity-results/docs-current.json
+      - name: Upload differential evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: python-parity-${{ github.run_id }}-${{ github.run_attempt }}
+          path: parity-results/
           retention-days: 7
           if-no-files-found: error
