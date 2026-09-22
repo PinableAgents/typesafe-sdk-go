@@ -13,3 +13,8 @@ coverage.html
 /validation-results/
 __pycache__/
 *.py[cod]
+
+# Reproducible local audit outputs and optional Python-only QA environment.
+/qa-results/
+/parity-results/
+/.venv-parity/

@@ -12,13 +12,17 @@ import (
 	"github.com/PinableAgents/typesafe-sdk-go/internal/mockapi"
 )
 
+var exitProcess = os.Exit
+
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		exitProcess(1)
 	}
 }
-func run() error {
+func run() error { return runWith(agentpolicy.DefaultConfig()) }
+
+func runWith(policy agentpolicy.Config) error {
 	mock := flag.Bool("mock", false, "use fixed data; not a model evaluation")
 	text := flag.String("text", "请解释 Go context 取消如何传递，不修改文件。", "task summary sent to the evaluator")
 	flag.Parse()
@@ -36,7 +40,7 @@ func run() error {
 		return err
 	}
 	defer client.Close()
-	router, err := agentpolicy.NewRouter(client, agentpolicy.DefaultConfig())
+	router, err := agentpolicy.NewRouter(client, policy)
 	if err != nil {
 		return err
 	}

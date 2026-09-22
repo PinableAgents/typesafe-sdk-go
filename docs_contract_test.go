@@ -92,7 +92,7 @@ func TestOfficialSDKCorpus(t *testing.T) {
 					case "noul":
 						var criteria NoulCriteria
 						if q["criteria"] != nil {
-						criteria = NoulCriteria(q["criteria"].(map[string]any))
+							criteria = NoulCriteria(q["criteria"].(map[string]any))
 						}
 						qs[name] = Noul{Instructions: q["instructions"], Criteria: criteria}
 					case "choice":

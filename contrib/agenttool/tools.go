@@ -108,6 +108,14 @@ type Registry struct {
 }
 
 func New(api API) (*Registry, error) {
+	cfg := agentpolicy.DefaultConfig()
+	cfg.Timeout = CallTimeout
+	return NewWithConfig(api, cfg)
+}
+
+// NewWithConfig allows trusted hosts to configure routing thresholds. This is
+// a host-side option; JSON tool arguments still cannot override policy or URLs.
+func NewWithConfig(api API, cfg agentpolicy.Config) (*Registry, error) {
 	if api == nil {
 		return nil, errors.New("agenttool: nil API")
 	}
@@ -118,8 +126,6 @@ func New(api API) (*Registry, error) {
 			return nil, errors.New("agenttool: nil API")
 		}
 	}
-	cfg := agentpolicy.DefaultConfig()
-	cfg.Timeout = CallTimeout
 	router, err := agentpolicy.NewRouter(api, cfg)
 	if err != nil {
 		return nil, err
