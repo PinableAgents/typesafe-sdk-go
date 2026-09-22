@@ -1,0 +1,65 @@
+name: Documentation parity and full coverage
+
+on:
+  pull_request:
+  push:
+    branches: [main, 'test/docs-parity-*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-parity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+          cache: false
+      - name: Record reviewed source
+        run: |
+          mkdir -p qa-results
+          git rev-parse HEAD > qa-results/commit.txt
+          go version > qa-results/toolchain.txt
+          git archive --format=tar.gz HEAD > qa-results/source.tar.gz
+      - name: Vet and build all packages
+        run: |
+          go vet ./...
+          go build ./...
+      - name: Race tests and complete coverage
+        shell: bash
+        run: |
+          set -o pipefail
+          go test -race -count=1 -shuffle=on -coverpkg=./... -covermode=atomic -coverprofile=qa-results/coverage.out -json ./... | tee qa-results/test-results.jsonl
+          go tool cover -func=qa-results/coverage.out | tee qa-results/coverage-functions.txt
+      - name: Exact statement coverage gate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          rows = [line.split() for line in Path('qa-results/coverage.out').read_text().splitlines()[1:] if line.strip()]
+          assert rows, 'empty coverage profile'
+          missed = [row for row in rows if int(row[1]) > 0 and int(row[2]) == 0]
+          total = sum(int(row[1]) for row in rows)
+          assert total > 0, 'empty statement denominator'
+          for row in missed:
+              print('UNCOVERED', *row)
+          assert not missed, f'{sum(int(row[1]) for row in missed)}/{total} statements uncovered; exact 100% required'
+          print(f'PASS: {total}/{total} statements covered')
+          PY
+      - name: Upload reproducible evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-parity-${{ github.run_id }}-${{ github.run_attempt }}
+          path: qa-results/
+          retention-days: 7
+          if-no-files-found: error
