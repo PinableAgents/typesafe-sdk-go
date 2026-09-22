@@ -138,14 +138,9 @@ func (r *SystemOneResponse) UnmarshalJSON(data []byte) error {
 			if err != nil {
 				return invalidResponse(path+"legend."+key, "expected a canonical nonnegative integer key")
 			}
-			if !contentOK(value, false) {
+			decoded, err := decodeLegendContent(value)
+			if err != nil {
 				return invalidResponse(path+"legend."+key, "expected text, object, or array")
-			}
-			var decoded any
-			dec := json.NewDecoder(bytes.NewReader(value))
-			dec.UseNumber()
-			if dec.Decode(&decoded) != nil {
-				return invalidResponse(path+"legend."+key, "invalid JSON content")
 			}
 			a.Legend[idx] = decoded
 		}
@@ -160,6 +155,23 @@ func (r *SystemOneResponse) UnmarshalJSON(data []byte) error {
 	}
 	*r = result
 	return nil
+}
+
+// decodeLegendContent parses once, retaining arbitrarily large JSON numbers.
+// Its input comes from json.RawMessage fields of an already parsed response.
+func decodeLegendContent(raw []byte) (any, error) {
+	var value any
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	if err := dec.Decode(&value); err != nil {
+		return nil, err
+	}
+	switch value.(type) {
+	case string, map[string]any, []any:
+		return value, nil
+	default:
+		return nil, invalidResponse("legend", "expected text, object, or array")
+	}
 }
 
 func scoreIndex(key string) (int, error) {
@@ -203,7 +215,8 @@ func (r *ListModelsResponse) UnmarshalJSON(data []byte) error {
 // ValidateFor is an opt-in request/answer contract check for application policies.
 // It rejects missing answers, mismatched kinds/options, bad distributions, and
 // inconsistent scores. It is stricter than the upstream Python response decoder.
-// Approximate probability sums and weighted scores use an absolute 1e-3 tolerance.
+// Probability sums use an absolute 1e-3 tolerance. Weighted scores also allow
+// independent two-decimal probability rounding, scaled by the level indexes.
 func (r *SystemOneResponse) ValidateFor(questions Questions) error {
 	if r == nil {
 		return invalidResponse("", "nil response")
@@ -289,7 +302,7 @@ func (r *SystemOneResponse) ValidateFor(questions Questions) error {
 			// so the weighted value may shift by up to 0.005 * sum(level indexes).
 			levels := len(criteria)
 			tolerance := math.Max(1e-3, 0.005*float64(levels*(levels-1)/2))
-			if math.IsNaN(value.Score) || math.IsInf(value.Score, 0) || math.Abs(value.Score-weighted) > tolerance {
+			if math.IsNaN(value.Score) || math.IsInf(value.Score, 0) || value.Score < 0 || value.Score > float64(levels-1) || math.Abs(value.Score-weighted) > tolerance {
 				return invalidResponse(path+".score", "score is inconsistent with the distribution")
 			}
 		default:

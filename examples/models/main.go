@@ -12,10 +12,12 @@ import (
 	"github.com/PinableAgents/typesafe-sdk-go/internal/mockapi"
 )
 
+var exitProcess = os.Exit
+
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		exitProcess(1)
 	}
 }
 func run() error {

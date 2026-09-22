@@ -1,173 +1,63 @@
 # typesafe-sdk-go
 
-**独立、非官方的 TypeSafe Go SDK。** 本版以 2026-09-20 读取的官方 Python SDK `main`（`pyproject.toml` 标示 `0.7.0`）的公开接口和关键实现为参考，以 Go 重写；不依赖 Python，不包含或本地运行 Jev 模型。
+**独立、非官方的 TypeSafe Go SDK。** 基于官方 HTTP 协议用 Go 实现，不依赖 Python 运行，不包含 Jev 模型，也不属于 TypeSafe 官方认证 SDK。
 
-当前交付版本：`0.2.0`。module 路径为 `github.com/PinableAgents/typesafe-sdk-go`，与该仓库地址一致，源码已推送并打上 `v0.2.0` tag，可直接作为远程依赖引用。本 SDK 不是 TypeSafe 官方认证的 SDK。
+当前对齐基线：**2026-09-22 官方文档 + Python SDK v0.7.1**，固定提交 `0ffd094c72ed9445223060b24ffd7a56aa781fb4`。Go 语言基线仍为 **1.23**，运行仅使用标准库。
 
-## 包含什么
+已发布版本仍为 `v0.2.0`；本轮对齐、覆盖率和样例改动在开发分支/PR，未自动发布新版本。旧 tag 不会包含本轮新增内容。试用请检出对应 PR 或固定其提交。
 
-核心包 `typesafe` 提供 `SystemOne`、`ListModels` / `Models().List()`，Choice / Score / Noul，结构化 instructions/criteria，RawQuestion，类型化响应、整数 Score 等级键、可空 usage，模型/请求/客户端配置覆盖，重试、取消、错误分类、请求 ID、原始响应、自定义响应与 metadata-only Observer。
+## 能力
 
-`contrib/agentpolicy` 是独立的 Agent 应用策略示例：任务意图、写入意图和范围评估，严格校验后输出建议；网络异常、字段缺失或不确定结果都转为复核。它不执行工具，不授予权限，不调用你的 Agent Runtime。
+核心包 `typesafe` 提供 `SystemOne`、`ListModels` / `Models().List()`，Choice / Score / Noul、结构化 state/instructions/criteria、RawQuestion、ExtraBody、类型化响应、可空 usage、原始 HTTP 元数据、自定义响应、模型/重试/超时/headers 覆盖与并发调用。
 
-只有 Go 标准库依赖。`go.mod` 使用 Go 1.23 语言基线，**需要 Go 1.23 及以上工具链**才能构建；实际验证工具链及各项结果见 `docs/validation-report.md`。生产部署请使用组织支持的 Go 工具链。
+`contrib/agentpolicy` 输出任务路由建议；`contrib/agenttool` 提供宿主中立的 JSON 工具；`cmd/typesafe-tool` 是单次 JSON stdin/stdout CLI。它们不执行任务、不授予权限，也不是 MCP server。低置信度、错误和写操作必须继续接受宿主授权/复核。
 
-## 1. 无 Key 跑通
+## 无密钥运行
 
 ```bash
-cd typesafe-sdk-go
 go test ./...
-go vet ./...
-go run ./examples/basic -mock
-go run ./examples/models -mock
-go run ./examples/agent -mock
+go run ./examples/basic --mock
+go run ./examples/models --mock
+go run ./examples/agent --mock
+go run ./cmd/typesafe-tool --list
 ```
 
-`-mock` 是本地 HTTP 服务返回的固定测试数据，不访问 TypeSafe，不测量模型准确率。Agent mock 对任何输入都返回同一份只读分类；它只用于验证程序连通性，绝不能作为安全策略。
+`--mock` 是本地固定数据，不访问模型，不测量准确率或实服延迟。完整可执行样例和独立消费者 `main.go` 见 [中文使用文档](docs/usage.zh-CN.md)。
 
-## 2. 调用真实 API
-
-macOS / Linux：
+## 质量验收
 
 ```bash
-export TYPESAFE_API_KEY='你的 API Key'
-export TYPESAFE_DEFAULT_MODEL='jev-latest'
-go run ./examples/basic -text 'Explain Go context cancellation without changing files.'
-go run ./examples/agent -text '请解释 context 取消如何传递，不修改文件。'
+make quality
+make examples
 ```
 
-Windows PowerShell：
+`make quality` 使用 Python 3 执行开发用门禁，运行 Go vet/build/race 和精确全包语句覆盖率。要求 **100% Go 生产语句覆盖率**，包含 CLI、三个示例和内部 mock，没有文件排除。门禁重新插桩源码核对分母，拒绝删块、漏文件和四舍五入伪 100%。
 
-```powershell
-$env:TYPESAFE_API_KEY = '你的 API Key'
-$env:TYPESAFE_DEFAULT_MODEL = 'jev-latest'
-go run ./examples/basic -text 'Explain Go context cancellation without changing files.'
-go run ./examples/agent -text '请解释 context 取消如何传递，不修改文件。'
-```
+Go/Python 共用 14 组协议样本，CI 实际安装固定 commit 的官方 Python SDK 比较请求和响应。18 个文档指纹与上游 main 每周检查，变化需要复核。**覆盖率与有限契约样本不能证明所有路径无缺陷、Python 语言机制完全等价或实服测试通过。** 本轮没有进行付费推理。
 
-可选 `TYPESAFE_BASE_URL` 默认是 `https://api.typesafe.ai`，**不要加 `/v1`**，SDK 自己追加接口路径。自建网关必须实现 TypeSafe 的协议；仅支持其他聊天协议不够。
+## 真实使用与默认行为
 
-`.env.example` 只是配置样例；本 SDK **不会自动加载 `.env`**。Key 不应提交 Git，也不应打包到公开前端或共享桌面安装包。
+宿主通过环境注入 `TYPESAFE_API_KEY`；不要将密钥写入源码、日志、公开前端或共享安装包。SDK 不自动加载 `.env`。去掉 `--mock` 会访问远端，可能产生费用。
 
-## 3. 最小调用
-
-以下片段放在返回 `error` 的函数中；完整可执行版本在 `examples/basic/main.go`。
-
-```go
-client, err := typesafe.NewClient(typesafe.Config{})
-if err != nil { return err }
-defer client.Close()
-
-ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
-defer cancel()
-
-request := typesafe.SystemOneRequest{
-    State: map[string]string{"task": "解释这个函数，不修改代码。"},
-    Questions: typesafe.Questions{
-        "intent": typesafe.ChoiceLabels(
-            "Which activity is requested?", "explain", "change", "unknown",
-        ),
-        "scope": typesafe.ScoreLevels(
-            "How broad is the requested work?", "One local issue.", "One component.", "Several components.",
-        ),
-        "write": typesafe.Noul{Instructions: "Does the task request persistent changes?"},
-    },
-}
-result, err := client.SystemOne(ctx, request)
-if err != nil { return err }
-if err := result.ValidateFor(request.Questions); err != nil { return err }
-fmt.Println(result.Choices["intent"].Choice)
-fmt.Println(result.Scores["scope"].Score)
-fmt.Println(result.Nouls["write"].Noul)
-```
-
-`ValidateFor` 很重要：直接读取不存在的 Go map 键会得到零值。SDK 为兼容未来答案类型，会保留未知答案而不令整次解析失败；业务层不能因此把缺失答案解释成“没有风险”。
-
-## 4. 在已有 Agent 工程中本地引用
-
-module 路径是 `github.com/PinableAgents/typesafe-sdk-go`，与该 GitHub 仓库地址一致，已发布 `v0.2.0`。只想稳定引用就直接用远程依赖：
-
-```bash
-go get github.com/PinableAgents/typesafe-sdk-go@v0.2.0
-```
-
-下面这节留给另一种情况：你要改 SDK 源码、或想脱离版本发布节奏跟进最新提交。建议目录如下：
-
-```text
-workspace/
-├── typesafe-sdk-go/
-└── your-agent/
-    └── go.mod
-```
-
-在已有 Agent 根目录执行，不要重新 `go mod init`：
-
-```bash
-go mod edit -require=github.com/PinableAgents/typesafe-sdk-go@v0.0.0
-go mod edit -replace=github.com/PinableAgents/typesafe-sdk-go=../typesafe-sdk-go
-```
-
-在 Agent 代码中引用：
-
-```go
-import (
-    typesafe "github.com/PinableAgents/typesafe-sdk-go"
-    "github.com/PinableAgents/typesafe-sdk-go/contrib/agentpolicy"
-)
-```
-
-添加实际调用代码后，再运行：
-
-```bash
-go mod tidy
-go test ./...
-```
-
-不要先执行 `go mod tidy` 再添加引用，否则 Go 可能移除尚未使用的 require。上述本地 require / replace 会让 Go 直接读取本地目录，不会去 GitHub 拉取本 SDK；原 Agent 的其他依赖仍可能需要网络。
-
-require 里的 `@v0.0.0` 只是满足 Go 的语法要求，实际内容始终取自 replace 指向的本地目录，与 SDK 的真实版本号无关。
-
-**不带 tag 拉取会得到伪版本。** 形如 `v0.0.0-20260920061433-98f2c5d654e7` 的版本号直接绑定某个 commit，内容随分支推进而变，不适合作为生产依赖锁定。生产请固定 `@v0.2.0` 这类正式 tag。
-
-## 5. 重要默认行为
-
-| 项目 | 本 SDK 行为 |
+| 项目 | 行为 |
 |---|---|
-| API Key | Config.APIKey 优先，否则读取 TYPESAFE_API_KEY |
-| 模型 | 请求 Model → Config.Model → TYPESAFE_DEFAULT_MODEL → jev-latest |
-| Base URL | Config.BaseURL → TYPESAFE_BASE_URL → 官方 API root |
-| HTTP 超时 | 默认每次尝试 10 秒，包含读取响应体；调用级 WithTimeout 可覆盖 |
-| 默认重试 | 初次之后最多 2 次；408、429、5xx，包括 529；连接和超时错误也重试 |
-| 退避 | 500ms 起，指数增长到 5s，减去最多 25% 随机抖动 |
-| Retry-After | 支持毫秒、秒、小数秒、HTTP 日期，优先毫秒头；不把长等待截短重试 |
-| 重试预算 | 默认 30 秒的“是否继续重试”预算，**不是整个调用的硬超时** |
-| 硬超时 | 使用 context.WithTimeout；调用方取消不重试 |
-| 响应大小 | 默认最多 8 MiB，可通过 MaxResponseBytes 修改 |
-| 重定向 | 不跟随，包括调用方 HTTPClient 提供的重定向策略 |
-| HTTP 明文 | 需要显式 AllowInsecureHTTP=true；仅建议本地测试使用 |
-| 日志 | 无自动正文日志；Observer 仅收到元数据，不读取 TYPESAFE_LOG_LEVEL |
-| Close | 阻止新请求；只关闭 SDK 自有客户端的空闲连接，不关闭借用的 Transport |
+| API key | 显式值优先；默认空字符串继承环境。APIKeySet=true 可明确拒绝继承；裁剪首尾空白，拒绝内部空白/控制字符/非 ASCII |
+| 模型 | 请求 Model → Config.Model → TYPESAFE_DEFAULT_MODEL → 默认 jev-latest；实际可用模型查 ListModels |
+| Base URL | Config.BaseURL → TYPESAFE_BASE_URL → 官方 API root；不要追加末尾 /v1 |
+| 超时 | 默认单次完整 HTTP 尝试 10 秒；WithTimeout 可覆盖，总时限用 context |
+| 重试 | 默认初次之后最多 2 次；零值 RetryPolicy 不重试；重试不保证 exactly-once，断连可能发生在服务已处理之后 |
+| Transport | Config.Transport 与 HTTPClient 互斥；前者可由 SDK 关闭空闲连接，后者借用、不接管生命周期 |
+| 安全 | 不跟随重定向，响应体默认上限 8 MiB，明文 HTTP 需显式开启，仅建议本地测试 |
+| 日志 | Observer 仅提供元数据，不自动记录正文，不读取 TYPESAFE_LOG_LEVEL |
 
-**重试并不保证 exactly-once。** 超时或断连后，服务器可能已经完成并计费。Agent 示例把连接和超时重试关闭，仅保留有限 HTTP 状态重试。上层不要再无条件套第二层重试。
+`ValidateFor(request.Questions)` 是可选的更严格业务保护。直接读取缺失的 Go map 键会得到零值，不能把缺失答案当成正常判断。ExtraBody 覆盖题目后必须针对实际发送的题目校验。
 
-## 6. 进一步阅读
+## 文档和维护
 
-- `docs/upstream-compatibility.md`：Python 接口映射、已知差异、来源与未实现项。
-- `docs/validation-report.md`：测试、竞态、运行和跨平台编译结果。
-- `docs/validation.log`：实际验证输出。
+[官方能力映射与差异](docs/upstream-compatibility.md) · [中文使用样例](docs/usage.zh-CN.md) · [Agent 工具接入](docs/agent-tools.zh-CN.md) · [组件验收](docs/component-validation.zh-CN.md)
 
-本次交付没有用真实 API Key 调用远端；没有测得真实延迟、准确率或账单。显式联网测试命令：
+本轮证据由 GitHub Actions artifacts 按 commit 保存；`docs/validation-report.md`、旧 coverage/log 是 2026-09-20 历史记录，不是本轮结果。
 
-```bash
-TYPESAFE_LIVE_TEST=1 go test -count=1 -run '^TestLiveAPI$' -v .
-```
+每周检查在合入默认分支后生效，只读发现变化，不自动接受新基线、合并或发版。管理员需把 `Full coverage (Go 1.23)` 和 `Official Python SDK differential contract` 设为 required checks 才能强制阻止不合格合并；添加工作流不等于已修改仓库保护规则。
 
-PowerShell：
-
-```powershell
-$env:TYPESAFE_LIVE_TEST = '1'
-go test -count=1 -run '^TestLiveAPI$' -v .
-Remove-Item Env:TYPESAFE_LIVE_TEST
-```
-
-这会查询模型列表并执行一次真实评估，可能产生费用。普通 `go test` 不做这一步。
+依赖请固定已验收 tag 或 commit/伪版本；伪版本绑定不可变提交，浮动的是分支查询结果。实服测试仍显式 opt-in，SKIP/mock 不算 LIVE PASS。

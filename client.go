@@ -34,13 +34,19 @@ type Event struct {
 }
 
 type Config struct {
-	APIKey            string
-	BaseURL           string
-	Model             string
-	Timeout           time.Duration
-	Retry             *RetryPolicy
-	Headers           http.Header
-	HTTPClient        *http.Client
+	APIKey string
+	// APIKeySet distinguishes an explicitly empty key from an omitted key.
+	// Leave false to preserve the existing empty-string/environment behavior.
+	APIKeySet  bool
+	BaseURL    string
+	Model      string
+	Timeout    time.Duration
+	Retry      *RetryPolicy
+	Headers    http.Header
+	HTTPClient *http.Client
+	// Transport is mutually exclusive with HTTPClient. Idle connections on a
+	// supplied transport are closed by Close; borrowed HTTPClient stays borrowed.
+	Transport         http.RoundTripper
 	MaxResponseBytes  int64
 	AllowInsecureHTTP bool
 	Observer          func(Event)
@@ -71,14 +77,24 @@ func envDefault(explicit, name, fallback string) string {
 }
 
 // NewClient resolves config, then environment, then defaults. An empty string
-// config field inherits its environment. It makes no network requests.
+// config field inherits its environment unless APIKeySet is true. It makes no
+// network requests.
 func NewClient(cfg Config) (*Client, error) {
-	key := envDefault(cfg.APIKey, APIKeyEnv, "")
-	if strings.TrimSpace(key) == "" {
+	key := cfg.APIKey
+	if !cfg.APIKeySet {
+		key = envDefault(key, APIKeyEnv, "")
+	}
+	key = strings.TrimSpace(key)
+	if key == "" {
 		return nil, invalid("api_key", "set TYPESAFE_API_KEY or Config.APIKey")
 	}
-	if strings.ContainsAny(key, "\r\n") {
-		return nil, invalid("api_key", "must not contain line breaks")
+	for _, c := range key {
+		if c < 33 || c > 126 {
+			return nil, invalid("api_key", "must contain only printable ASCII without internal whitespace")
+		}
+	}
+	if cfg.HTTPClient != nil && cfg.Transport != nil {
+		return nil, invalid("transport", "Transport and HTTPClient are mutually exclusive")
 	}
 	base := strings.TrimRight(envDefault(cfg.BaseURL, BaseURLEnv, DefaultBaseURL), "/")
 	u, err := url.Parse(base)
@@ -126,6 +142,8 @@ func NewClient(cfg Config) (*Client, error) {
 	owns := cfg.HTTPClient == nil
 	if cfg.HTTPClient != nil {
 		hc = *cfg.HTTPClient
+	} else if cfg.Transport != nil {
+		hc.Transport = cfg.Transport
 	} else if tr, ok := http.DefaultTransport.(*http.Transport); ok {
 		hc.Transport = tr.Clone()
 	} else {

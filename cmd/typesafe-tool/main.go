@@ -13,15 +13,25 @@ import (
 	"github.com/PinableAgents/typesafe-sdk-go/contrib/agenttool"
 )
 
+var exitProcess = os.Exit
+
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	os.Exit(run(ctx, os.Args[1:], os.Stdin, os.Stdout))
+	code := run(ctx, os.Args[1:], os.Stdin, os.Stdout)
+	stop() // os.Exit does not run deferred functions.
+	exitProcess(code)
 }
 
 // Stdout always contains JSON only. No key, payload, raw error, or HTTP header
 // is logged; a nonzero exit code means callers must not treat data as approval.
 func run(ctx context.Context, args []string, input io.Reader, output io.Writer) int {
+	return runWith(ctx, args, input, output, typesafe.NewClient, agenttool.New)
+}
+
+func runWith(ctx context.Context, args []string, input io.Reader, output io.Writer,
+	newClient func(typesafe.Config) (*typesafe.Client, error),
+	newRegistry func(agenttool.API) (*agenttool.Registry, error)) int {
 	emit := func(value any, code int) int {
 		if json.NewEncoder(output).Encode(value) != nil {
 			return 1
@@ -40,12 +50,12 @@ func run(ctx context.Context, args []string, input io.Reader, output io.Writer) 
 	}
 	// The host supplies TYPESAFE_API_KEY. Tool arguments cannot select a host
 	// or inherit an untrusted TYPESAFE_BASE_URL redirecting the credential.
-	client, err := typesafe.NewClient(typesafe.Config{BaseURL: typesafe.DefaultBaseURL, Retry: &typesafe.RetryPolicy{}, MaxResponseBytes: 1 << 20})
+	client, err := newClient(typesafe.Config{BaseURL: typesafe.DefaultBaseURL, Retry: &typesafe.RetryPolicy{}, MaxResponseBytes: 1 << 20})
 	if err != nil {
 		return emit(agenttool.Result{Error: &agenttool.ToolError{Code: "configuration_error", Message: "Configure TYPESAFE_API_KEY in the host environment.", RequiresReview: true}}, 2)
 	}
 	defer client.Close()
-	tools, err := agenttool.New(client)
+	tools, err := newRegistry(client)
 	if err != nil {
 		return emit(agenttool.ErrorResult(err), 2)
 	}
