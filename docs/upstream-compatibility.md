@@ -1,87 +1,83 @@
-# Python SDK 对照与实现边界
+# 官方文档对齐、证据与维护边界
 
-核对日期：2026-09-20。参考仓库：`typesafe-ai/typesafe-sdk-python`；本次读取的 `main` 中 `pyproject.toml` 版本为 `0.7.0`。这里的 `0.7.0` 是源码版本字段，不代表已经确认同名 Git tag / PyPI release。
+核对日期：**2026-09-22**。这是独立、非官方的 Go SDK，不包含 Jev 模型，不依赖 Python 运行。
 
-本次通过网页逐文件核对公开源码和官方文档。环境不能直接克隆仓库，未取得可验证的 Git commit SHA，也没有运行上游 Python 测试套件。因此，这是有接口/行为对照的独立 Go 实现，不是已经证明与某个 commit 完全等价的机械移植。发布前应补记实际选定的 upstream commit，并做实服与跨语言契约测试。
+基线为 TypeSafe 官方公开 HTTP/原语/SDK 文档，以及官方 Python SDK **v0.7.1**（2026-09-21），固定提交 **`0ffd094c72ed9445223060b24ffd7a56aa781fb4`**。`docs/parity-lock.json` 保存 18 个文档来源的 SHA-256 与上游 main 提交，共 19 项来源。文档指纹相同只能证明来源未变化，不自动证明行为等价。
 
-## 对照范围
+## 三个不同的验收口径
 
-| Python | Go | 状态 / 说明 |
+**Go 语句覆盖率：** `go test -race -count=1 -shuffle=on -coverpkg=./...` 配合源码分母校验，要求所有当前构建的 Go 生产代码语句被执行；没有排除 CLI、示例或内部 mock。不是分支覆盖、路径穷举或“没有 bug”的证明；Python QA 脚本另有单元测试，不计入 Go 语句覆盖率。
+
+**公开能力对齐：** 下表每个公开 HTTP 能力均有 Go 对应入口和离线测试。另用同一份 `testdata/docs-contract.json`，实际运行 Go SDK 和固定提交的官方 Python SDK，比较 14 组请求与响应。比较器使用 mock HTTP，绝不把模拟数据称为实服成功。有限样本通过不等于两种语言的一切运行时行为完全相同。
+
+**实服验证：** 本轮未使用真实密钥进行付费推理。现有 live suite 保留显式 opt-in，跳过不算通过；服务端模型质量、账单、限额和业务阈值需要独立实服验收。2026-09-20 的旧报告和 coverage 文件是历史证据，不是本轮结果。
+
+## 能力映射与测试入口
+
+| 官方能力 | Go 实现 | 回归证据 |
 |---|---|---|
-| TypeSafeClient | NewClient(Config) / Client | 已实现 |
-| AsyncTypeSafeClient | 共享 Client + goroutine + context | Go 原生并发，不另造 AsyncClient 类 |
-| system_one | SystemOne(ctx, SystemOneRequest, ...CallOption) | 已实现 |
-| client.models.list | ListModels / Models().List | 已实现 GET /v1/models |
-| Choice / Score / Noul | 同名结构体 | 已实现 |
-| 字典问题 | RawQuestion | 已实现；允许未来 type |
-| JSONContent | any + 编码时形状校验 | 支持文本、对象、数组；嵌套允许普通 JSON 值 |
-| 可空 Choice 描述 | map[string]any 中 nil | 保留嵌套 null |
-| 可选 instructions | nil 时省略 | 同源码行为，实际业务仍建议明确说明 |
-| 可选 Noul criteria | NoulCriteria 为 nil 时省略 | true / false 可显式为 nil |
-| response.answers | Answers | 已实现按 type 分派 |
-| response.choices / scores / nouls | Choices / Scores / Nouls | 已实现类型化 map |
-| Score 整数键 | map[int]float64 / map[int]any | JSON 上保持字符串键，Go 中使用 int |
-| Score structured legend | map[int]any | 支持对象/数组，不错误收窄为 string |
-| usage 缺失计数 | *int64 | nil 表示未报告，0 表示报告为零 |
-| raw_http_response | HTTP 字段 | 保留 body / header / request ID / attempts / duration |
-| 未知答案类型 | UnknownAnswers + HTTP.Body | 不进入已知类型 map；可显式检查 |
-| RetryPolicy | RetryPolicy / WithRetry | 核心默认值和退避语义对照实现 |
-| timeout 参数 | Config.Timeout / WithTimeout / context | Go 完整 HTTP 尝试超时，不等同 Python 各 I/O 阶段超时 |
-| extra_headers | WithHeaders | 已实现；鉴权和 SDK 标识等受保护 |
-| extra_body | SystemOneRequest.ExtraBody | 顶层浅合并，重名字段后写覆盖 |
-| response_model | SystemOneInto + 可选 Validate() | 支持自定义目标；不是 Pydantic 的完整等价物 |
-| 异常子类 | APIError.Kind + errors.As / errors.Is | Go 风格，不逐一建立 Python 异常继承树 |
-| 日志系统 | Observer | 只记录元数据；刻意不复制正文 debug 日志 |
+| POST /v1/systemone | Client.SystemOne | client_test.go、TestOfficialSDKCorpus |
+| GET /v1/models | ListModels、Models().List | client_test.go、models_empty/models_metadata corpus |
+| State 文本、对象、数组 | SystemOneRequest.State | request_test.go、结构化 corpus |
+| Choice 标签、描述、概率、confidence | Choice、ChoiceLabels、ChoiceAnswer | request/response tests、choice corpus |
+| Score 有序等级、期望分数、legend | Score、ScoreLevels、ScoreAnswer | request/response tests、score corpus |
+| Noul 0–1、可选正反标准 | Noul、NoulCriteria、NoulAnswer | request/response tests、noul corpus |
+| 同次请求混合多个问题 | Questions | mixed_one_request corpus、ExampleClient_SystemOne |
+| 嵌套 JSON/null、大整数 | JSONContent、RawMessage、UseNumber | structured corpus、precision regression |
+| 原始问题和扩展字段 | RawQuestion | raw_question_extensions corpus、request_test.go |
+| 模型覆盖与环境默认 | Request.Model、Config.Model | client_test.go、model_override corpus |
+| API key 优先级和早期校验 | Config.APIKey、APIKeySet | TestDocumentedAPIKeyValidation |
+| 客户端/单次请求 headers | Config.Headers、WithHeaders | client_test.go 保护头与快照测试 |
+| 自定义 transport/client | Config.Transport / HTTPClient，互斥 | TestTransportOwnershipAndMutualExclusion |
+| 自定义响应模型 | SystemOneInto + Validate() | client_test.go、ExampleClient_SystemOneInto |
+| extra_body 浅合并后写覆盖 | SystemOneRequest.ExtraBody | shallow_extra_override corpus |
+| 分类响应、可空 usage、模型元数据 | Answers/Choices/Scores/Nouls、Usage、ModelMetadata | response_test.go、corpus |
+| 未知响应类型前向兼容 | UnknownAnswers、HTTP.Body | unknown_answer_and_fields corpus |
+| 原始响应、request ID | HTTPResponse | client_test.go |
+| 客户端/请求级重试 | RetryPolicy、WithRetry、Predicate | retry_test.go、client_test.go |
+| 超时、取消、重试预算 | Timeout、WithTimeout、context | client/retry tests、deadline regression |
+| HTTP/连接/超时/响应错误分类 | errors.As/Is、APIError.Kind | errors/client/Agent adapter tests |
+| 异步调用能力 | 同一 Client + goroutine + context | 并发测试、ExampleClient_SystemOne_concurrent |
 
-## 需要明确的差异
+另外提供 Agent 策略与 JSON 工具适配、单次调用 CLI；它们不是官方 HTTP API 的必要组成部分，也不是 MCP server。`agenttool.NewWithConfig` 只允许可信宿主调整策略，JSON 工具参数仍不能改 key、URL、headers、ExtraBody 或授权规则。
 
-**输入检查。** Go 版会在本地检查 State 和已知问题字段的 JSON 形状。Python 原始字典分支部分验证更宽松。Go 不硬编码当前文档的 Choice 最大 255 / Score 最大 10 限制，避免把可变服务限制固定到客户端；服务器仍可返回 422。一般业务应该使用较小的选项集。
+## 本轮实现修复
 
-**Score 最小级数。** Python 源码只拒绝空列表，生成 schema 的 min_length 也是 1，而 HTTP 说明建议至少两个等级。Go 版允许一个等级以靠近 SDK 行为；示例使用三个有意义的等级。不能据此保证实服接受所有单级问题。
+密钥按照 v0.7.1 规则裁剪首尾空白，拒绝空值、内部空白、控制字符、DEL 和非 ASCII 字符，错误消息不回显密钥。保留既有 `Config{}` 环境继承行为；需要明确传空并拒绝继承时使用 `APIKeySet: true`。
 
-**响应校验。** 除必须字段和类型，Go 版还检查概率范围、非负 token 计数和 Score 等级键的规范形式。Python 对某些数值更宽松。额外的 `ValidateFor` 验证题目/答案匹配、选项集合、概率和及 Score 加权值，属于 Go 版新增的应用保护，不是上游解码器的原样行为。
+增加可独立注入的 `Config.Transport`，与 `HTTPClient` 互斥。修正 Score 严格业务校验的边界：即使落在舍入容差内，也不能低于 0 或超过最大等级。结构化 legend 单次解码并保留大整数，避免重复解析。CLI 在退出前释放信号注册；构造失败、读写失败和三个示例的真实入口也接受测试。
 
-**Score 加权容差。** 实测远端（`jev-1.13.0`）返回的 probabilities 按两位小数舍入，而 `score` 是连续估计，二者独立给出，加权期望与 `score` 常有约 0.01 的偏差。`ValidateFor` 因此按等级数放大容差：`0.005 * Σ等级索引`（3 等级为 0.015，2 等级为 0.005），下限 1e-3。修复前用的绝对 1e-3 会在约 80% 的真实评估上误判响应损坏。这不放宽对概率和（仍 1e-3）或选项集合的检查。
+## 有意保留的 Go/安全差异
 
-**未来类型。** 默认解析保留未知答案，不导致整批失败。需要作业务决定时必须显式校验所需问题。RawQuestion 允许未来请求类型，但不能保证未知协议服务端可接受。
+**不宣称 Python 内部实现 100% 等价。** Go 使用 goroutine/context，不复制 AsyncTypeSafeClient、Pydantic 类继承、pickle 或 frozen 对象；自定义响应使用嵌套 Answers 字段与 Validate，而不是自动把答案提升到顶层。普通 Go struct 不会自动强制 required 字段，必须显式检查。
 
-**自定义响应。** `SystemOneInto` 接收非 nil 指针，按普通 Go JSON 解码；结构体零值不代表服务端真实返回。可在目标类型实现 `Validate() error`。没有实现 Pydantic 模型继承后将 answers 子字段自动提升到顶层的机制；使用显式嵌套 `Answers` 结构体替代。
+Go `Timeout` 是单次完整 HTTP 尝试的时限，不是 Python 的逐 I/O 阶段 timeout。重试预算不是整个调用的硬超时；用父 context 设置总时限。重试不保证 exactly-once，服务可能已经完成并计费。
 
-**错误。** Go 的 APIError 使用 Kind 区分 400/401/403/404/422/429/5xx。Message、Body、Header 可显式查看，但 Error() 不输出服务端正文，减少误日志泄露。TimeoutError / ConnectionError 保留 Unwrap；调用者 context 取消优先。
+借入的 `HTTPClient` 由宿主负责生命周期，SDK 不关闭其 transport；明确通过 `Config.Transport` 交给 SDK 的 transport，Close 会调用其 CloseIdleConnections（若实现）。Python 会关闭传入的 client，这一点不同。Go 统一拒绝重定向、限制响应体大小，明文 HTTP 必须显式启用。
 
-**超时。** SDK 默认每次尝试 10 秒；Python 的 HTTP timeout 是 I/O 操作超时配置，两者不逐阶段等价。RetryPolicy.TotalTimeout=30s 对应“继续重试的预算”，不强行终止已进行的尝试。Agent 的硬性总时间限制通过父 context 实现。
+Go 保留 metadata-only `Observer`，不实现 `TYPESAFE_LOG_LEVEL` 自动正文日志，避免泄露任务数据。回调和自定义 transport 必须支持并发；应用不得在请求编码期间并发修改其 map/slice。
 
-**重试。** 默认状态集合和连接/超时行为对齐；零值 RetryPolicy 表示不重试，修改默认项应先调用 DefaultRetryPolicy。Python 的 exceptions 集合用 Go 的 Predicate + errors.As 表达。纳秒/毫秒舍入和抖动随机序列不保证逐次完全相同。
+Go 对已知问题形状、概率范围、非负 token 和规范整数键做更严格检查。`ValidateFor` 是额外的应用保护，不是上游默认解码规则；还验证题目与答案集合、最大选择、概率和与 Score 的一致性。Score 保留既有舍入容差 `max(1e-3, 0.005 * Σ等级索引)`，但本轮没有重新测量远端舍入行为，不沿用旧报告的实服误判比例作为本轮证据。
 
-**HTTP 生命周期与安全。** Go 不接管借用的 http.Client / Transport 的关闭；只浅拷贝 client 配置，不变更原对象。SDK 统一拒绝重定向，以免带 Key 的请求被转发。HTTP 明文要显式启用。BaseURL 必须为 root，不接受末尾 /v1。
+Score 允许单个非空等级以兼容参考 Python SDK 的输入行为；HTTP 文档的服务端限制仍以真实返回为准。Go 不硬编码易变化的模型容量上限，不承诺所有本地有效输入都会被每个服务端模型接受。原始未知问题类型亦同。
 
-**可变性。** Python 的回答对象标记 frozen，Go 返回普通可变值。客户端可并发共享；应用不得在正在编码时并发改写请求 map / slice，不得无同步地修改并发使用的回调和 transport。响应结构由调用方管理。
+## 保持对齐的流程
+
+`make quality` 运行 vet、build、QA 脚本测试、race 和精确全包覆盖率。门禁按位置合并不同测试二进制的计数，再重新插桩所有 `go list ./...` 源文件核对语句分母；空报告、漏文件、删块、计数不一致和四舍五入伪 100% 都失败。
+
+PR/main 的 `Documentation parity and full coverage` 工作流执行两个独立检查：`Full coverage (Go 1.23)` 和 `Official Python SDK differential contract`，后者还检查来源指纹。`Weekly TypeSafe documentation drift` 每周一 01:17 UTC（新加坡 09:17）只读检查；合入默认分支后才会按计划生效。GitHub 调度可能延后。
+
+检测到文档或上游 main 变化、来源缺失、网络失败时检查失败，不自动修改 lock、不自动合并。维护者需读取差异，补实现/测试/样例，更新固定 Python 提交和经过复核的指纹，然后在 PR 内重新通过质量检查。指纹更新不能替代行为审阅。
+
+工作流提供检查，但**不等于已设置仓库强制合并规则**。仓库管理员应将上述两个检查设为 required；本轮不绕过或改写既有分支保护，不自动发版。
 
 ## 原始来源
 
-以下都是本次实际读取过的来源；文档和源码出现差异时，前文明确记录，没有将任一页面视为未经验证的实服事实。
-
-- https://github.com/typesafe-ai/typesafe-sdk-python
-- https://raw.githubusercontent.com/typesafe-ai/typesafe-sdk-python/main/pyproject.toml
-- https://raw.githubusercontent.com/typesafe-ai/typesafe-sdk-python/main/src/typesafe_sdk/_core/client/sync/client.py
-- https://raw.githubusercontent.com/typesafe-ai/typesafe-sdk-python/main/src/typesafe_sdk/_core/question_types.py
-- https://raw.githubusercontent.com/typesafe-ai/typesafe-sdk-python/main/src/typesafe_sdk/_core/response_types.py
-- https://raw.githubusercontent.com/typesafe-ai/typesafe-sdk-python/main/src/typesafe_sdk/_schemas/models.py
-- https://raw.githubusercontent.com/typesafe-ai/typesafe-sdk-python/main/src/typesafe_sdk/_core/questions.py
-- https://raw.githubusercontent.com/typesafe-ai/typesafe-sdk-python/main/src/typesafe_sdk/_core/retry.py
-- https://raw.githubusercontent.com/typesafe-ai/typesafe-sdk-python/main/src/typesafe_sdk/_core/errors.py
-- https://raw.githubusercontent.com/typesafe-ai/typesafe-sdk-python/main/src/typesafe_sdk/_core/transport.py
-- https://raw.githubusercontent.com/typesafe-ai/typesafe-sdk-python/main/src/typesafe_sdk/_core/endpoints.py
-- https://raw.githubusercontent.com/typesafe-ai/typesafe-sdk-python/main/src/typesafe_sdk/_core/config.py
-- https://raw.githubusercontent.com/typesafe-ai/typesafe-sdk-python/main/src/typesafe_sdk/_core/constants.py
-- https://raw.githubusercontent.com/typesafe-ai/typesafe-sdk-python/main/src/typesafe_sdk/constants.py
-- https://raw.githubusercontent.com/typesafe-ai/typesafe-sdk-python/main/LICENSE
+- https://docs.typesafe.ai/introduction
 - https://docs.typesafe.ai/api
+- https://docs.typesafe.ai/sdk/python/changelog
 - https://docs.typesafe.ai/sdk/python/api/clients/sync
-- https://docs.typesafe.ai/sdk/python/api/retries
+- https://docs.typesafe.ai/sdk/python/usage
+- https://github.com/typesafe-ai/typesafe-sdk-python/tree/0ffd094c72ed9445223060b24ffd7a56aa781fb4
 
-## 后续发布验收，不属于已完成项
-
-选定并记录上游 commit；在同一份样本上对照 Python/Go 请求和响应；用自己的真实 Key 运行 live test；在实际 Agent 工程中做编译和运行验收；用中文/英文真实业务样本标注并校准阈值；选定维护者并确定后续版本节奏（`v0.2.0` 已发布并推送）。
-
-本包不包含 MCP server、HTTP 决策代理、自动计费管理、熔断器、持久化缓存、任务编排引擎，也不包括对任何宿主工程的实际补丁。这些应按真实宿主接口另行集成，不能宣称安装 SDK 就已获得。
+全部指纹对应 URL 见 `parity-lock.json`。可执行示例见 [usage.zh-CN.md](usage.zh-CN.md) 和 `example_test.go`。

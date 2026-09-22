@@ -34,7 +34,9 @@ jobs:
           git archive --format=tar.gz HEAD > qa-results/source.tar.gz
       - name: Vet, build and formatting
         run: |
-          test -z "$(gofmt -l $(git ls-files '*.go'))"
+          unformatted="$(gofmt -l $(git ls-files '*.go'))"
+          printf '%s\n' "$unformatted"
+          test -z "$unformatted"
           go vet ./...
           go build ./...
           python3 -m unittest discover -s scripts -p 'test_check_*.py' -v
@@ -59,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      TYPESAFE_LOG_LEVEL: off
+      TYPESAFE_LOG_LEVEL: 'off'
       TYPESAFE_LIVE_TEST: '0'
       TYPESAFE_COMPONENTS_LIVE: '0'
     steps:
@@ -81,8 +83,8 @@ jobs:
           .venv-parity/bin/pip freeze > parity-results/python-dependencies.txt
           TYPESAFE_PARITY_OUTPUT="$PWD/parity-results/go.json" go test -count=1 -run '^TestOfficialSDKCorpus$' .
           .venv-parity/bin/python scripts/compare_python_sdk.py --go parity-results/go.json --output parity-results/python.json
-      - name: Collect current documentation fingerprints (proposal only)
-        run: python3 scripts/check_doc_drift.py --snapshot parity-results/docs-current.json
+      - name: Verify reviewed documentation and upstream revision
+        run: python3 scripts/check_doc_drift.py --check --snapshot parity-results/docs-current.json
       - name: Upload differential evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

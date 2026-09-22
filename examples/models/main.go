@@ -44,3 +44,4 @@ func run() error {
 		return err
 	}
 	return json.NewEncoder(os.Stdout).Encode(response)
+}

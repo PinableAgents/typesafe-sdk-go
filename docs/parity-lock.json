@@ -1,0 +1,65 @@
+{
+  "reviewed_at": "2026-09-22",
+  "python_tag": "v0.7.1",
+  "python_commit": "0ffd094c72ed9445223060b24ffd7a56aa781fb4",
+  "scope": "Public TypeSafe HTTP contracts and Go equivalents of SDK capabilities; see upstream-compatibility.md for intentional language and security differences.",
+  "sources": {
+    "https://api.github.com/repos/typesafe-ai/typesafe-sdk-python/commits/main": {
+      "commit": "0ffd094c72ed9445223060b24ffd7a56aa781fb4"
+    },
+    "https://docs.typesafe.ai/api.md": {
+      "sha256": "eda2b3c28c183f9604844b2cf7369ea10180b2fdf3c7d2c9ecc348cb438b905c"
+    },
+    "https://docs.typesafe.ai/introduction.md": {
+      "sha256": "60718253a02810701f11927db314a5becd45beea491feb7654540777d51d6517"
+    },
+    "https://docs.typesafe.ai/llms.txt": {
+      "sha256": "90f351e8280659d7aaa01b178535730e56a867ede4bc8976b1e54341593e23e9"
+    },
+    "https://docs.typesafe.ai/models.md": {
+      "sha256": "0e46bdb919f42b37e9c1ed82e34f1beea78e9acaea8f634f1c5d8c1650c7012d"
+    },
+    "https://docs.typesafe.ai/primitives.md": {
+      "sha256": "da7cc1cb16ab729be45619276e7a3a92d3e72fee1b5f6ef8285c8c439f1a29d6"
+    },
+    "https://docs.typesafe.ai/primitives/advanced.md": {
+      "sha256": "d56a055d5a0ead4da18e161863cea8b77c1976c22d1b17e91390af7b66ea1e63"
+    },
+    "https://docs.typesafe.ai/primitives/choice.md": {
+      "sha256": "01dd735de3e50edc1586726c09b570647cb220ffb324724b66be1d77f1479bd1"
+    },
+    "https://docs.typesafe.ai/primitives/noul.md": {
+      "sha256": "341f13b3ea5ec29462588b8c2010fdaa9260905d32b7bdcc37daf5dd625e4fea"
+    },
+    "https://docs.typesafe.ai/primitives/score.md": {
+      "sha256": "3eab7e9788c4c130f14e2dc38564b4942d68f845fb845bcc684b443d7026729b"
+    },
+    "https://docs.typesafe.ai/sdk/python/api/clients/async.md": {
+      "sha256": "3ba320e0808056436b74ccef345c57a27d7416005a0a9479a611fb8fb7a4af5e"
+    },
+    "https://docs.typesafe.ai/sdk/python/api/clients/sync.md": {
+      "sha256": "c9616f30b1ac2a527043105dccb60a90c9eed22bb2a758375474c9408946c667"
+    },
+    "https://docs.typesafe.ai/sdk/python/api/constants.md": {
+      "sha256": "cc277f47f210b21c147902852542965481510e06e23ef0be866bbe05716b582b"
+    },
+    "https://docs.typesafe.ai/sdk/python/api/exceptions.md": {
+      "sha256": "8ad84b3c2eecc76450c7c99e9916feeba6bf7da7481390de8350f8d229bae6ec"
+    },
+    "https://docs.typesafe.ai/sdk/python/api/retries.md": {
+      "sha256": "b2178cb1323ca92d378f99e089a15782f75c6001e31b2915baf9f81477690e5e"
+    },
+    "https://docs.typesafe.ai/sdk/python/api/types/questions.md": {
+      "sha256": "ea526f584f1f527fdb39d00245945ed436fb363a33a55ff3e935a2e86b7c5af1"
+    },
+    "https://docs.typesafe.ai/sdk/python/api/types/responses.md": {
+      "sha256": "7ce7829bfe8ceb6ed4d4f58d0cc38447a936ab213a85e0b6388edf71b366787a"
+    },
+    "https://docs.typesafe.ai/sdk/python/changelog.md": {
+      "sha256": "2e3a596030ed65c2496d7dae77a1ef1288cae58a7751a991925a1c31b1898b52"
+    },
+    "https://docs.typesafe.ai/sdk/python/usage.md": {
+      "sha256": "33c3b0790125a7ebda7d46a5dbeea7935ed1c33b54051d404a7d47461295454a"
+    }
+  }
+}
