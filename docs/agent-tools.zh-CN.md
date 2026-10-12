@@ -176,7 +176,7 @@ gh workflow run typesafe-validation.yml --repo PinableAgents/typesafe-sdk-go --r
 模型、用量及脱敏日志。不要用少量样本或覆盖率作安全认证。
 
 
-## 0.3.0-dev 增量
+## v0.3.0 增量
 
 Result 新增可选 metadata：request_id、duration_ms、attempts、model、protocol、rubric_version；不会包含原始 HTTP Header/Body。原 ok/data/error 保留。Choice/Noul 无描述负例现在在调用 API 前失败，宿主应补齐问题描述。
 

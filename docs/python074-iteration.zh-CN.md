@@ -2,7 +2,7 @@
 
 实现日期：2026-10-12。Go 语言基线保持 **1.23**，SDK 运行时仅用标准库。
 起点为 Go `93f3a3bd1d9252af857593a67f8a51bf354542c2`；Python 固定在
-`e70bf99a89f27102247613bcd5d1aa8923a1cda9`（v0.7.4）。开发版本为 `0.3.0-dev`；没有移动历史标签或发布新版本。
+`e70bf99a89f27102247613bcd5d1aa8923a1cda9`（v0.7.4）。正式版本为 `0.3.0`，对应 `v0.3.0` 标签；历史标签保持不变。
 
 ## 1. 迁移说明
 
@@ -108,7 +108,7 @@ go test -run '^$' -bench BenchmarkPooledTransportRequests -benchmem .
 跨语言对照使用实际安装的固定 Python SDK + MockTransport，不是用 Python 仿写一个 SDK。Go 特有 context、连接池和 ValidateFor 浮点边界另有本地测试。
 
 CI 从 docs/parity-lock.json 读取唯一 Python commit。scripts/check_release.py 核对 README 与 Version；tag 事件还要求 tag 等于 v + Version。
-开发版本不是已发布标签。要发布稳定版本，应先更改 Version/README、通过检查，再另行创建标签；本次没有发布授权操作。
+本次按用户授权发布 `v0.3.0` 标签：先同步 Version/README，再验证并合并 PR #4，只有主分支合并提交通过质量和 Python 差分检查才创建标签。专用 `tag-v0.3.0.yml` 只处理该版本；不移动旧标签，不创建 GitHub Release。后续版本仍需单独授权与验收。
 
 固定基线正确性 CI 不再查询变化中的网站。每周 docs-drift.yml 继续独立检查上游；仍不自动更新锁、合并或发版。
 **网站 18 项指纹保留 2026-09-22 的真实记录。** 本环境未能读取新版站点全文，不能只复制新哈希来假装完成网页复核。

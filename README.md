@@ -1,10 +1,10 @@
 # typesafe-sdk-go
 
-<!-- sdk-version: 0.3.0-dev -->
+<!-- sdk-version: 0.3.0 -->
 
 **独立、非官方 TypeSafe Go SDK。** Go **1.23**，运行时仅依赖标准库，不包含 Jev 模型，也不需要 Python 服务。
 
-当前开发版本 **0.3.0-dev**。已存在的 `v0.2.1` 标签不会被移动；本轮迭代尚未发布新标签。
+当前版本 **0.3.0**，对应标签 **`v0.3.0`**。历史 `v0.2.1` 标签保持不变。
 Python 源码对齐基线：**v0.7.4 / `e70bf99a89f27102247613bcd5d1aa8923a1cda9`**（2026-10-12 复核）。
 网站指纹另保留 2026-09-22 历史快照，尚未宣称全面复核新版网站；漂移仍由独立周检告警。
 
@@ -17,6 +17,12 @@ Score 修复浮点临界值误拒绝。新 `NonFiniteFloat64` 显式提供 Pytho
 [迁移、并发配置、测试边界](docs/python074-iteration.zh-CN.md) · [完整中文使用](docs/usage.zh-CN.md) · [Agent 接入](docs/agent-tools.zh-CN.md)
 
 ## 接入
+
+```sh
+go get github.com/PinableAgents/typesafe-sdk-go@v0.3.0
+# 需要单次 JSON CLI 时安装：
+go install github.com/PinableAgents/typesafe-sdk-go/cmd/typesafe-tool@v0.3.0
+```
 
 ```go
 import typesafe "github.com/PinableAgents/typesafe-sdk-go"
@@ -39,7 +45,7 @@ if err := response.ValidateFor(request.Questions); err != nil { return err }
 ```
 
 以上是放入应用函数体的片段；`ctx` 和 API Key 由宿主提供。密钥通过 `TYPESAFE_API_KEY` 注入，不提交源码、不写日志、不自动加载 .env。
-依赖固定通过验收的 tag 或 commit。本轮功能需固定本次 PR 提交，旧 `v0.2.1` 不含新入口。
+依赖固定 `v0.3.0` 或通过验收的 commit；旧 `v0.2.1` 不含本轮新增入口。
 
 ## 功能与边界
 
@@ -77,3 +83,5 @@ go run ./cmd/typesafe-tool --list
 
 正确性 CI 从单一 lock 安装固定 Python commit。周检独立跟踪动态网站/上游变化，不自动接受新基线或发版；不会因为新网页改变而悄悄改变固定契约。
 版本门禁检查 README/Version，tag 事件检查两者与标签一致。添加 workflow 不等于修改 required checks 或分支保护。
+
+本次授权的 `v0.3.0` 标签由 `tag-v0.3.0.yml` 在 PR #4 合并提交的完整质量和官方 Python 差分检查通过后创建。该入口仅处理此版本，不自动发布其他版本或创建 GitHub Release，也不会移动已有标签。

@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	Version                       = "0.3.0-dev"
+	Version                       = "0.3.0"
 	DefaultBaseURL                = "https://api.typesafe.ai"
 	DefaultModel                  = "jev-latest"
 	DefaultTimeout                = 10 * time.Second
