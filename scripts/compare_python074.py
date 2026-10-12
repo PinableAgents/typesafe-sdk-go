@@ -6,6 +6,7 @@ import asyncio
 import json
 from pathlib import Path
 import httpx2
+from pydantic import ValidationError as PydanticValidationError
 from typesafe_sdk import (Choice, Noul, Score, RetryPolicy, TypeSafeClient,
                          TypeSafeError, TypeSafeAPIError,
                          TypeSafeAPIConnectionError, TypeSafeAPITimeoutError)
@@ -59,7 +60,7 @@ def compare(corpus, go_results):
             observed["error"] = "connection"
         except TypeSafeAPIError as exc:
             observed["error"] = f"http_{exc.status}"
-        except TypeSafeError:
+        except (TypeSafeError, PydanticValidationError):
             observed["error"] = "invalid_request"
         assert observed["error"] == case["error"], (case["name"], observed)
         assert observed["calls"] == case["calls"], (case["name"], observed)
