@@ -174,3 +174,10 @@ gh workflow run typesafe-validation.yml --repo PinableAgents/typesafe-sdk-go --r
 使用 GitHub 网页配置同名 Actions Secret 并手动选择 `live=true` 也可以。
 仅绿色的 PR 离线 CI 不表示真实测试通过；验收应核对检出 SHA、Go 版本、非跳过的 live 根测试、
 模型、用量及脱敏日志。不要用少量样本或覆盖率作安全认证。
+
+
+## 0.3.0-dev 增量
+
+Result 新增可选 metadata：request_id、duration_ms、attempts、model、protocol、rubric_version；不会包含原始 HTTP Header/Body。原 ok/data/error 保留。Choice/Noul 无描述负例现在在调用 API 前失败，宿主应补齐问题描述。
+
+连接池、显式非有限浮点类型和完整迁移边界见 [本轮实现](python074-iteration.zh-CN.md)。

@@ -1,13 +1,13 @@
 # TypeSafe Go SDK 使用样例
 
-适用基线：Go 1.23；本轮开发分支/PR，参考官方 Python SDK v0.7.1。旧 `v0.2.0` tag 不包含本轮新增的 Transport、APIKeySet、质量门禁等改动。SDK 运行只依赖 Go 标准库；Python 仅用于可选的开发质量检查和跨语言对照。
+适用基线：Go 1.23；当前开发版本 0.3.0-dev，参考官方 Python SDK v0.7.4。已存在的 v0.2.1 标签不含本轮新增入口；请固定本轮已验收提交。SDK 运行只依赖 Go 标准库；Python 仅用于开发质量检查和跨语言对照。新增校验、连接池与元数据的迁移说明见 [本轮实现](python074-iteration.zh-CN.md)。
 
 ## 1. 先跑无密钥样例
 
 ```bash
 git clone https://github.com/PinableAgents/typesafe-sdk-go.git
 cd typesafe-sdk-go
-git switch test/docs-parity-100-coverage-20260922
+git switch feat/python074-agent-iteration-20261012
 make quality
 make examples
 ```
@@ -43,7 +43,7 @@ go test -count=1 -run ^Example .
 在消费者工程中使用已验收的提交或发布 tag；试用本轮 PR 可以先取该分支，Go 会解析并在 go.mod 中固定对应伪版本：
 
 ```bash
-go get github.com/PinableAgents/typesafe-sdk-go@test/docs-parity-100-coverage-20260922
+go get github.com/PinableAgents/typesafe-sdk-go@feat/python074-agent-iteration-20261012
 ```
 
 已有本地 SDK 源码时：
@@ -182,6 +182,6 @@ CLI 是单次 JSON 调用，不是常驻 MCP server。宿主注册可用 `agentt
 
 `make quality` 必须得到精确 100% Go 生产语句覆盖率；支持的构建源文件全部进入分母，包括 CLI、三个示例和内部 mock。门禁会拒绝报告删块/漏文件以及四舍五入后的伪 100%。测试通过仍不代表完整路径穷举或模型准确率。
 
-CI 安装固定 commit 的官方 Python SDK，使用 14 组同源 fixture 比较 Go/Python 的请求和响应，不使用真实 Key。每周文档检查只报告变化，不自动接受新基线或合并；维护步骤见 [对齐矩阵](upstream-compatibility.md)。管理员还需将质量检查设为 required，才能强制阻止未通过检查的合并。
+CI 安装固定 commit 的官方 Python SDK，使用 14 组同源 fixture 比较 Go/Python 的请求和响应，并对照 37 组新版输入和错误/重试行为，不使用真实 Key。每周文档检查只报告变化，不自动接受新基线或合并；维护步骤见 [对齐矩阵](upstream-compatibility.md)。管理员还需将质量检查设为 required，才能强制阻止未通过检查的合并。
 
 实服组件验收仍采用现有的显式授权流程，见 `component-validation.zh-CN.md`。不要把 SKIP、mock 或离线 CI 成功写成 LIVE PASS。

@@ -301,8 +301,12 @@ func (r *SystemOneResponse) ValidateFor(questions Questions) error {
 			// score is a continuous estimate. Each level may be off by up to 0.005,
 			// so the weighted value may shift by up to 0.005 * sum(level indexes).
 			levels := len(criteria)
-			tolerance := math.Max(1e-3, 0.005*float64(levels*(levels-1)/2))
-			if math.IsNaN(value.Score) || math.IsInf(value.Score, 0) || value.Score < 0 || value.Score > float64(levels-1) || math.Abs(value.Score-weighted) > tolerance {
+			tolerance := math.Max(1e-3, 0.0025*float64(levels)*float64(levels-1))
+			// Separate a few floating-point ULPs from the service rounding budget.
+			// For example abs(0.505-0.5) is slightly greater than 0.005 in float64.
+			scale := math.Max(1, math.Abs(weighted))
+			roundoff := 8 * float64(levels) * (math.Nextafter(scale, math.Inf(1)) - scale)
+			if math.IsNaN(value.Score) || math.IsInf(value.Score, 0) || value.Score < 0 || value.Score > float64(levels-1) || math.Abs(value.Score-weighted) > tolerance+roundoff {
 				return invalidResponse(path+".score", "score is inconsistent with the distribution")
 			}
 		default:

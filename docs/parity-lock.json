@@ -1,11 +1,11 @@
 {
-  "reviewed_at": "2026-09-22",
-  "python_tag": "v0.7.1",
-  "python_commit": "0ffd094c72ed9445223060b24ffd7a56aa781fb4",
+  "reviewed_at": "2026-10-12",
+  "python_tag": "v0.7.4",
+  "python_commit": "e70bf99a89f27102247613bcd5d1aa8923a1cda9",
   "scope": "Public TypeSafe HTTP contracts and Go equivalents of SDK capabilities; see upstream-compatibility.md for intentional language and security differences.",
   "sources": {
     "https://api.github.com/repos/typesafe-ai/typesafe-sdk-python/commits/main": {
-      "commit": "0ffd094c72ed9445223060b24ffd7a56aa781fb4"
+      "commit": "e70bf99a89f27102247613bcd5d1aa8923a1cda9"
     },
     "https://docs.typesafe.ai/api.md": {
       "sha256": "eda2b3c28c183f9604844b2cf7369ea10180b2fdf3c7d2c9ecc348cb438b905c"
@@ -61,5 +61,7 @@
     "https://docs.typesafe.ai/sdk/python/usage.md": {
       "sha256": "33c3b0790125a7ebda7d46a5dbeea7935ed1c33b54051d404a7d47461295454a"
     }
-  }
+  },
+  "documentation_reviewed_at": "2026-09-22",
+  "documentation_status": "Historical web fingerprints retained; current website drift remains pending review. Python source contract was reviewed separately on 2026-10-12."
 }

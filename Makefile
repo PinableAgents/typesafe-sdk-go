@@ -18,6 +18,7 @@ check: vet test race mock
 
 .PHONY: quality coverage examples
 quality:
+	python3 scripts/check_release.py
 	go vet ./...
 	go build ./...
 	python3 -m unittest discover -s scripts -p 'test_check_*.py' -v

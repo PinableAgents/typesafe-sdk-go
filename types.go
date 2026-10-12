@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	Version                       = "0.2.0"
+	Version                       = "0.3.0-dev"
 	DefaultBaseURL                = "https://api.typesafe.ai"
 	DefaultModel                  = "jev-latest"
 	DefaultTimeout                = 10 * time.Second
@@ -150,6 +150,7 @@ type Usage struct {
 }
 
 type HTTPResponse struct {
+	Protocol   string // Negotiated HTTP protocol, e.g. HTTP/1.1 or HTTP/2.0.
 	StatusCode int
 	Header     http.Header
 	Body       []byte
