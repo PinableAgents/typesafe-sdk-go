@@ -63,12 +63,12 @@ func main() {
   fmt.Fprint(w,"{\"model\":\"fixture\",\"usage\":{},\"answers\":{\"write\":{\"type\":\"noul\",\"noul\":0.01}}}")
  }))
  defer s.Close()
- c,err:=typesafe.NewClient(typesafe.Config{APIKey:"local-consumer",BaseURL:s.URL,AllowInsecureHTTP:true})
+ c,err:=typesafe.NewClient(typesafe.Config{APIKey:"local-consumer",BaseURL:s.URL,AllowInsecureHTTP:true,Transport:typesafe.NewPooledTransport()})
  if err!=nil {panic(err)};defer c.Close()
  tools,err:=agenttool.New(c);if err!=nil {panic(err)}
  if len(agenttool.Definitions())!=3 {panic("definitions")}
  result:=tools.Call(context.Background(),agenttool.ListModels,[]byte("{}"))
- if !result.OK {panic("models")}
+ if !result.OK || result.Metadata==nil || result.Metadata.Attempts!=1 {panic("models/metadata")}
  result=tools.Call(context.Background(),agenttool.Evaluate,[]byte("{\"state\":\"explain only\",\"questions\":{\"write\":{\"type\":\"noul\",\"instructions\":\"Modifications requested?\"}}}"))
  if !result.OK || result.Data.(*typesafe.SystemOneResponse).Nouls["write"].Noul!=0.01 {panic("evaluate")}
  fmt.Println("independent_agent_ok")

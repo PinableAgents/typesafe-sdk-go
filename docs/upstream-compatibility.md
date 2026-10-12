@@ -1,14 +1,16 @@
 # 官方文档对齐、证据与维护边界
 
-核对日期：**2026-09-22**。这是独立、非官方的 Go SDK，不包含 Jev 模型，不依赖 Python 运行。
+Python 源码核对日期：**2026-10-12**；网站快照仍为 **2026-09-22**。这是独立、非官方的 Go SDK，不包含 Jev 模型，不依赖 Python 运行。
 
-基线为 TypeSafe 官方公开 HTTP/原语/SDK 文档，以及官方 Python SDK **v0.7.1**（2026-09-21），固定提交 **`0ffd094c72ed9445223060b24ffd7a56aa781fb4`**。`docs/parity-lock.json` 保存 18 个文档来源的 SHA-256 与上游 main 提交，共 19 项来源。文档指纹相同只能证明来源未变化，不自动证明行为等价。
+Python 源码基线为 **v0.7.4**（2026-10-09），固定提交 **`e70bf99a89f27102247613bcd5d1aa8923a1cda9`**；原 HTTP/原语/SDK 网站指纹单独保留历史记录，不声称已完整复核新版网站。`docs/parity-lock.json` 保存 18 个文档来源的 SHA-256 与上游 main 提交，共 19 项来源。文档指纹相同只能证明来源未变化，不自动证明行为等价。
+
+新增校验、显式非有限数兼容、Score 数值边界、连接池、Agent 元数据与维护流程见 [本轮实现](python074-iteration.zh-CN.md)。
 
 ## 三个不同的验收口径
 
 **Go 语句覆盖率：** `go test -race -count=1 -shuffle=on -coverpkg=./...` 配合源码分母校验，要求所有当前构建的 Go 生产代码语句被执行；没有排除 CLI、示例或内部 mock。不是分支覆盖、路径穷举或“没有 bug”的证明；Python QA 脚本另有单元测试，不计入 Go 语句覆盖率。
 
-**公开能力对齐：** 下表每个公开 HTTP 能力均有 Go 对应入口和离线测试。另用同一份 `testdata/docs-contract.json`，实际运行 Go SDK 和固定提交的官方 Python SDK，比较 14 组请求与响应。比较器使用 mock HTTP，绝不把模拟数据称为实服成功。有限样本通过不等于两种语言的一切运行时行为完全相同。
+**公开能力对齐：** 下表每个公开 HTTP 能力均有 Go 对应入口和离线测试。另用同一份 `testdata/docs-contract.json`，实际运行 Go SDK 和固定提交的官方 Python SDK，比较 14 组请求与响应，另比较 37 组非法输入、数值与错误/重试行为。比较器使用 mock HTTP，绝不把模拟数据称为实服成功。有限样本通过不等于两种语言的一切运行时行为完全相同。
 
 **实服验证：** 本轮未使用真实密钥进行付费推理。现有 live suite 保留显式 opt-in，跳过不算通过；服务端模型质量、账单、限额和业务阈值需要独立实服验收。2026-09-20 的旧报告和 coverage 文件是历史证据，不是本轮结果。
 
@@ -41,7 +43,7 @@
 
 另外提供 Agent 策略与 JSON 工具适配、单次调用 CLI；它们不是官方 HTTP API 的必要组成部分，也不是 MCP server。`agenttool.NewWithConfig` 只允许可信宿主调整策略，JSON 工具参数仍不能改 key、URL、headers、ExtraBody 或授权规则。
 
-## 本轮实现修复
+## v0.2.1 中已有修复（保留）
 
 密钥按照 v0.7.1 规则裁剪首尾空白，拒绝空值、内部空白、控制字符、DEL 和非 ASCII 字符，错误消息不回显密钥。保留既有 `Config{}` 环境继承行为；需要明确传空并拒绝继承时使用 `APIKeySet: true`。
 
@@ -65,7 +67,7 @@ Score 允许单个非空等级以兼容参考 Python SDK 的输入行为；HTTP 
 
 `make quality` 运行 vet、build、QA 脚本测试、race 和精确全包覆盖率。门禁按位置合并不同测试二进制的计数，再重新插桩所有 `go list ./...` 源文件核对语句分母；空报告、漏文件、删块、计数不一致和四舍五入伪 100% 都失败。
 
-PR/main 的 `Documentation parity and full coverage` 工作流执行两个独立检查：`Full coverage (Go 1.23)` 和 `Official Python SDK differential contract`，后者还检查来源指纹。`Weekly TypeSafe documentation drift` 每周一 01:17 UTC（新加坡 09:17）只读检查；合入默认分支后才会按计划生效。GitHub 调度可能延后。
+PR/main 的 `Documentation parity and full coverage` 工作流执行两个独立检查：`Full coverage (Go 1.23)` 和 `Official Python SDK differential contract`，后者仅验证固定基线；动态来源指纹由独立周检负责。`Weekly TypeSafe documentation drift` 每周一 01:17 UTC（新加坡 09:17）只读检查；合入默认分支后才会按计划生效。GitHub 调度可能延后。
 
 检测到文档或上游 main 变化、来源缺失、网络失败时检查失败，不自动修改 lock、不自动合并。维护者需读取差异，补实现/测试/样例，更新固定 Python 提交和经过复核的指纹，然后在 PR 内重新通过质量检查。指纹更新不能替代行为审阅。
 
@@ -78,6 +80,6 @@ PR/main 的 `Documentation parity and full coverage` 工作流执行两个独立
 - https://docs.typesafe.ai/sdk/python/changelog
 - https://docs.typesafe.ai/sdk/python/api/clients/sync
 - https://docs.typesafe.ai/sdk/python/usage
-- https://github.com/typesafe-ai/typesafe-sdk-python/tree/0ffd094c72ed9445223060b24ffd7a56aa781fb4
+- https://github.com/typesafe-ai/typesafe-sdk-python/tree/e70bf99a89f27102247613bcd5d1aa8923a1cda9
 
 全部指纹对应 URL 见 `parity-lock.json`。可执行示例见 [usage.zh-CN.md](usage.zh-CN.md) 和 `example_test.go`。

@@ -45,6 +45,8 @@ type Decision struct {
 	RequestID        string         `json:"request_id,omitempty"`
 	RubricVersion    string         `json:"rubric_version"`
 	Usage            typesafe.Usage `json:"usage"`
+	Attempts         int            `json:"attempts,omitempty"`
+	DurationMillis   int64          `json:"duration_ms,omitempty"`
 }
 
 type Router struct {
@@ -126,6 +128,8 @@ func (r *Router) Evaluate(ctx context.Context, task Task) (Decision, error) {
 	result.Usage = response.Usage
 	if response.HTTP != nil {
 		result.RequestID = response.HTTP.RequestID
+		result.Attempts = response.HTTP.Attempts
+		result.DurationMillis = response.HTTP.Duration.Milliseconds()
 	}
 	switch {
 	case route.Choice == "unknown":

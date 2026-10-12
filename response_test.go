@@ -11,7 +11,7 @@ import (
 func mixedQuestions() Questions {
 	return Questions{
 		"intent": ChoiceLabels("intent?", "explain", "change"),
-		"write":  Noul{},
+		"write":  Noul{Instructions: "Does the task change files?"},
 		"scope":  Score{Criteria: []any{"Local", map[string]any{"description": "Broad"}}},
 	}
 }

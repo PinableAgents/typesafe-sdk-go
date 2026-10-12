@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main, 'test/docs-parity-*']
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -39,6 +40,7 @@ jobs:
           test -z "$unformatted"
           go vet ./...
           go build ./...
+          python3 scripts/check_release.py
           python3 -m unittest discover -s scripts -p 'test_check_*.py' -v
       - name: Race tests and complete coverage
         shell: bash
@@ -75,7 +77,7 @@ jobs:
       - name: Install reviewed official Python revision
         run: |
           python3 -m venv .venv-parity
-          .venv-parity/bin/pip install 'git+https://github.com/typesafe-ai/typesafe-sdk-python.git@0ffd094c72ed9445223060b24ffd7a56aa781fb4'
+          .venv-parity/bin/pip install "$(python3 scripts/check_release.py --python-requirement)"
       - name: Compare Go and official Python with mock HTTP only
         run: |
           mkdir -p parity-results
@@ -83,8 +85,10 @@ jobs:
           .venv-parity/bin/pip freeze > parity-results/python-dependencies.txt
           TYPESAFE_PARITY_OUTPUT="$PWD/parity-results/go.json" go test -count=1 -run '^TestOfficialSDKCorpus$' .
           .venv-parity/bin/python scripts/compare_python_sdk.py --go parity-results/go.json --output parity-results/python.json
-      - name: Verify reviewed documentation and upstream revision
-        run: python3 scripts/check_doc_drift.py --check --snapshot parity-results/docs-current.json
+          TYPESAFE_BEHAVIOR_OUTPUT="$PWD/parity-results/behavior-go.json" go test -count=1 -run '^TestPython074BehaviorCorpus$' .
+          .venv-parity/bin/python scripts/compare_python074.py --go parity-results/behavior-go.json --output parity-results/behavior-python.json
+      # Mutable web/main drift is checked separately by docs-drift.yml.
+      # A changing website must not change the pinned correctness contract.
       - name: Upload differential evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

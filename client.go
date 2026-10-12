@@ -371,7 +371,7 @@ func (c *Client) attempt(parent context.Context, method, path string, body []byt
 		return nil, transportError(err, parent, ctx, o.timeout)
 	}
 	defer resp.Body.Close()
-	raw := &HTTPResponse{StatusCode: resp.StatusCode, Header: resp.Header.Clone(), RequestID: resp.Header.Get(RequestIDHeader)}
+	raw := &HTTPResponse{Protocol: resp.Proto, StatusCode: resp.StatusCode, Header: resp.Header.Clone(), RequestID: resp.Header.Get(RequestIDHeader)}
 	data, err := io.ReadAll(io.LimitReader(resp.Body, c.maxResponseBytes+1))
 	if err != nil {
 		return raw, transportError(err, parent, ctx, o.timeout)

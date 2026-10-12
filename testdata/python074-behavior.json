@@ -1,0 +1,469 @@
+[
+  {
+    "name": "empty_choice_raw",
+    "question": {
+      "type": "choice",
+      "criteria": {}
+    },
+    "typed": false,
+    "error": "invalid_request",
+    "calls": 0
+  },
+  {
+    "name": "empty_choice_typed",
+    "question": {
+      "type": "choice",
+      "criteria": {}
+    },
+    "typed": true,
+    "error": "invalid_request",
+    "calls": 0
+  },
+  {
+    "name": "empty_noul_raw",
+    "question": {
+      "type": "noul"
+    },
+    "typed": false,
+    "error": "invalid_request",
+    "calls": 0
+  },
+  {
+    "name": "empty_noul_typed",
+    "question": {
+      "type": "noul"
+    },
+    "typed": true,
+    "error": "invalid_request",
+    "calls": 0
+  },
+  {
+    "name": "null_outcomes_raw",
+    "question": {
+      "type": "noul",
+      "criteria": {
+        "true": null,
+        "false": null
+      }
+    },
+    "typed": false,
+    "error": "invalid_request",
+    "calls": 0
+  },
+  {
+    "name": "null_outcomes_typed",
+    "question": {
+      "type": "noul",
+      "criteria": {
+        "true": null,
+        "false": null
+      }
+    },
+    "typed": true,
+    "error": "invalid_request",
+    "calls": 0
+  },
+  {
+    "name": "empty_score_raw",
+    "question": {
+      "type": "score",
+      "criteria": []
+    },
+    "typed": false,
+    "error": "invalid_request",
+    "calls": 0
+  },
+  {
+    "name": "empty_score_typed",
+    "question": {
+      "type": "score",
+      "criteria": []
+    },
+    "typed": true,
+    "error": "invalid_request",
+    "calls": 0
+  },
+  {
+    "name": "noul_empty_string_raw",
+    "question": {
+      "type": "noul",
+      "instructions": ""
+    },
+    "typed": false,
+    "error": "",
+    "calls": 1
+  },
+  {
+    "name": "noul_empty_string_typed",
+    "question": {
+      "type": "noul",
+      "instructions": ""
+    },
+    "typed": true,
+    "error": "",
+    "calls": 1
+  },
+  {
+    "name": "noul_empty_object_raw",
+    "question": {
+      "type": "noul",
+      "instructions": {}
+    },
+    "typed": false,
+    "error": "",
+    "calls": 1
+  },
+  {
+    "name": "noul_empty_object_typed",
+    "question": {
+      "type": "noul",
+      "instructions": {}
+    },
+    "typed": true,
+    "error": "",
+    "calls": 1
+  },
+  {
+    "name": "noul_criteria_only_raw",
+    "question": {
+      "type": "noul",
+      "criteria": {
+        "false": "Not a request",
+        "true": null
+      }
+    },
+    "typed": false,
+    "error": "",
+    "calls": 1
+  },
+  {
+    "name": "noul_criteria_only_typed",
+    "question": {
+      "type": "noul",
+      "criteria": {
+        "false": "Not a request",
+        "true": null
+      }
+    },
+    "typed": true,
+    "error": "",
+    "calls": 1
+  },
+  {
+    "name": "one_choice_raw",
+    "question": {
+      "type": "choice",
+      "criteria": {
+        "a": null
+      }
+    },
+    "typed": false,
+    "error": "",
+    "calls": 1
+  },
+  {
+    "name": "one_choice_typed",
+    "question": {
+      "type": "choice",
+      "criteria": {
+        "a": null
+      }
+    },
+    "typed": true,
+    "error": "",
+    "calls": 1
+  },
+  {
+    "name": "one_score_raw",
+    "question": {
+      "type": "score",
+      "criteria": [
+        "a"
+      ]
+    },
+    "typed": false,
+    "error": "",
+    "calls": 1
+  },
+  {
+    "name": "one_score_typed",
+    "question": {
+      "type": "score",
+      "criteria": [
+        "a"
+      ]
+    },
+    "typed": true,
+    "error": "",
+    "calls": 1
+  },
+  {
+    "name": "nonfinite_NaN",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "state": {
+      "metrics": [
+        {
+          "value": {
+            "$nonfinite": "NaN"
+          }
+        }
+      ],
+      "id": 9007199254740993
+    },
+    "error": "",
+    "calls": 1
+  },
+  {
+    "name": "nonfinite_Infinity",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "state": {
+      "metrics": [
+        {
+          "value": {
+            "$nonfinite": "Infinity"
+          }
+        }
+      ],
+      "id": 9007199254740993
+    },
+    "error": "",
+    "calls": 1
+  },
+  {
+    "name": "nonfinite_-Infinity",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "state": {
+      "metrics": [
+        {
+          "value": {
+            "$nonfinite": "-Infinity"
+          }
+        }
+      ],
+      "id": 9007199254740993
+    },
+    "error": "",
+    "calls": 1
+  },
+  {
+    "name": "nonfinite_all_request_paths",
+    "question": {
+      "type": "noul",
+      "instructions": {
+        "question": "Inspect",
+        "value": {
+          "$nonfinite": "NaN"
+        }
+      },
+      "criteria": {
+        "true": {
+          "value": {
+            "$nonfinite": "Infinity"
+          }
+        }
+      }
+    },
+    "extra_body": {
+      "metrics": {
+        "value": {
+          "$nonfinite": "-Infinity"
+        }
+      }
+    },
+    "error": "",
+    "calls": 1
+  },
+  {
+    "name": "http_400",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "statuses": [
+      400
+    ],
+    "error": "http_400",
+    "calls": 1
+  },
+  {
+    "name": "http_401",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "statuses": [
+      401
+    ],
+    "error": "http_401",
+    "calls": 1
+  },
+  {
+    "name": "http_403",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "statuses": [
+      403
+    ],
+    "error": "http_403",
+    "calls": 1
+  },
+  {
+    "name": "http_404",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "statuses": [
+      404
+    ],
+    "error": "http_404",
+    "calls": 1
+  },
+  {
+    "name": "http_422",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "statuses": [
+      422
+    ],
+    "error": "http_422",
+    "calls": 1
+  },
+  {
+    "name": "http_429",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "statuses": [
+      429
+    ],
+    "error": "http_429",
+    "calls": 1
+  },
+  {
+    "name": "http_529",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "statuses": [
+      529
+    ],
+    "error": "http_529",
+    "calls": 1
+  },
+  {
+    "name": "retry_408",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "statuses": [
+      408,
+      200
+    ],
+    "retries": 1,
+    "error": "",
+    "calls": 2
+  },
+  {
+    "name": "retry_429",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "statuses": [
+      429,
+      200
+    ],
+    "retries": 1,
+    "error": "",
+    "calls": 2
+  },
+  {
+    "name": "retry_500",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "statuses": [
+      500,
+      200
+    ],
+    "retries": 1,
+    "error": "",
+    "calls": 2
+  },
+  {
+    "name": "retry_529",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "statuses": [
+      529,
+      200
+    ],
+    "retries": 1,
+    "error": "",
+    "calls": 2
+  },
+  {
+    "name": "retry_exhaustion",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "statuses": [
+      503,
+      503
+    ],
+    "retries": 1,
+    "error": "http_503",
+    "calls": 2
+  },
+  {
+    "name": "connection",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "transport_error": "connection",
+    "error": "connection",
+    "calls": 1
+  },
+  {
+    "name": "timeout",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "transport_error": "timeout",
+    "error": "timeout",
+    "calls": 1
+  },
+  {
+    "name": "canceled",
+    "question": {
+      "type": "noul",
+      "instructions": "Does the state contain measurements?"
+    },
+    "transport_error": "canceled",
+    "error": "canceled",
+    "calls": 1
+  }
+]

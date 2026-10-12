@@ -52,19 +52,32 @@ func validateQuestion(raw []byte, path string) error {
 	case "choice", "noul":
 		rawCriteria, exists := q["criteria"]
 		if kind == "noul" && (!exists || bytes.Equal(bytes.TrimSpace(rawCriteria), []byte("null"))) {
+			if instr := q["instructions"]; len(instr) == 0 || bytes.Equal(bytes.TrimSpace(instr), []byte("null")) {
+				return invalid(path, "noul requires instructions or a described outcome")
+			}
 			return nil
 		}
 		var criteria map[string]json.RawMessage
 		if !exists || json.Unmarshal(rawCriteria, &criteria) != nil || criteria == nil {
 			return invalid(path+".criteria", "expected an object")
 		}
+		if kind == "choice" && len(criteria) == 0 {
+			return invalid(path+".criteria", "at least one choice is required")
+		}
+		described := false
 		for name, value := range criteria {
 			if kind == "noul" && name != "true" && name != "false" {
 				return invalid(path+".criteria", "noul criteria keys must be true or false")
 			}
+			if !bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
+				described = true
+			}
 			if !contentOK(value, true) {
 				return invalid(path+".criteria."+name, "expected text, object, array, or null")
 			}
+		}
+		if instr := q["instructions"]; kind == "noul" && !described && (len(instr) == 0 || bytes.Equal(bytes.TrimSpace(instr), []byte("null"))) {
+			return invalid(path, "noul requires instructions or a described outcome")
 		}
 	case "score":
 		var criteria []json.RawMessage
@@ -101,4 +114,12 @@ func prepareBody(req SystemOneRequest, model string) ([]byte, error) {
 		return nil, invalid("body", "cannot encode JSON")
 	}
 	return raw, nil
+}
+
+// ValidateQuestions checks the same local question contract used by SystemOne.
+// It makes no requests. Unknown RawQuestion kinds retain their forward-compatible
+// shape-only validation; this is not a guarantee of server acceptance.
+func ValidateQuestions(questions Questions) error {
+	_, err := normalizeQuestions(questions)
+	return err
 }

@@ -45,7 +45,7 @@ type Definition struct {
 func Definitions() []Definition {
 	return []Definition{
 		{ListModels, "List available TypeSafe models. Sends no workspace content.", json.RawMessage(`{"type":"object","properties":{},"additionalProperties":false}`)},
-		{Evaluate, "Evaluate supplied state using Choice, Score or Noul questions. Only send necessary redacted data. Answers are advisory, not tool-execution permissions.", json.RawMessage(`{"type":"object","required":["state","questions"],"properties":{"state":{"type":["string","object","array"]},"model":{"type":"string"},"questions":{"type":"object","minProperties":1,"maxProperties":32,"additionalProperties":{"type":"object","required":["type"],"properties":{"type":{"enum":["choice","score","noul"]},"instructions":{"type":["string","object","array","null"]},"criteria":{"type":["object","array","null"]}},"additionalProperties":false}}},"additionalProperties":false}`)},
+		{Evaluate, "Evaluate supplied state using Choice, Score or Noul questions. Only send necessary redacted data. Answers are advisory, not tool-execution permissions.", json.RawMessage(`{"type":"object","required":["state","questions"],"properties":{"state":{"type":["string","object","array"]},"model":{"type":"string"},"questions":{"type":"object","minProperties":1,"maxProperties":32,"additionalProperties":{"oneOf":[{"type":"object","required":["type","criteria"],"properties":{"type":{"const":"choice"},"instructions":{"type":["string","object","array","null"]},"criteria":{"type":"object","minProperties":1,"additionalProperties":{"type":["string","object","array","null"]}}},"additionalProperties":false},{"type":"object","required":["type","criteria"],"properties":{"type":{"const":"score"},"instructions":{"type":["string","object","array","null"]},"criteria":{"type":"array","minItems":1,"items":{"type":["string","object","array"]}}},"additionalProperties":false},{"type":"object","required":["type"],"properties":{"type":{"const":"noul"},"instructions":{"type":["string","object","array","null"]},"criteria":{"type":["object","null"],"properties":{"true":{"type":["string","object","array","null"]},"false":{"type":["string","object","array","null"]}},"additionalProperties":false}},"additionalProperties":false,"anyOf":[{"required":["instructions"],"properties":{"instructions":{"type":["string","object","array"]}}},{"required":["criteria"],"properties":{"criteria":{"type":"object","anyOf":[{"required":["true"],"properties":{"true":{"type":["string","object","array"]}}},{"required":["false"],"properties":{"false":{"type":["string","object","array"]}}}]}}}]}]}}},"additionalProperties":false}`)},
 		{RouteTask, "Suggest an Agent task route. Review is required for failures, uncertainty or state changes. Never use the result to bypass host permissions or approvals.", json.RawMessage(`{"type":"object","required":["task"],"properties":{"task":{"type":"string","minLength":1},"context_summary":{"type":"string"}},"additionalProperties":false}`)},
 	}
 }
@@ -58,10 +58,30 @@ type ToolError struct {
 	RequiresReview bool   `json:"requires_review"`
 }
 
+// Metadata contains only selected diagnostic values, never HTTP bodies, headers,
+// endpoint URLs or credentials. Missing values are unreported, not measured zero.
+type Metadata struct {
+	RequestID      string `json:"request_id,omitempty"`
+	DurationMillis int64  `json:"duration_ms,omitempty"`
+	Attempts       int    `json:"attempts,omitempty"`
+	Model          string `json:"model,omitempty"`
+	Protocol       string `json:"protocol,omitempty"`
+	RubricVersion  string `json:"rubric_version,omitempty"`
+}
+
+func responseMetadata(model string, raw *typesafe.HTTPResponse) *Metadata {
+	m := &Metadata{Model: model}
+	if raw != nil {
+		m.RequestID, m.DurationMillis, m.Attempts, m.Protocol = raw.RequestID, raw.Duration.Milliseconds(), raw.Attempts, raw.Protocol
+	}
+	return m
+}
+
 type Result struct {
-	OK    bool       `json:"ok"`
-	Data  any        `json:"data,omitempty"`
-	Error *ToolError `json:"error,omitempty"`
+	Metadata *Metadata  `json:"metadata,omitempty"`
+	OK       bool       `json:"ok"`
+	Data     any        `json:"data,omitempty"`
+	Error    *ToolError `json:"error,omitempty"`
 }
 
 // ErrorResult exposes only fixed messages and error categories. It never
@@ -93,7 +113,14 @@ func ErrorResult(err error) Result {
 	case errors.As(err, &size):
 		e.Code, e.Message = "response_too_large", "The configured response size limit was exceeded."
 	}
-	return Result{Error: e}
+	result := Result{Error: e}
+	if api != nil {
+		result.Metadata = &Metadata{RequestID: api.RequestID}
+	}
+	if response != nil {
+		result.Metadata = responseMetadata("", response.HTTP)
+	}
+	return result
 }
 
 func invalidArguments() Result {
@@ -171,7 +198,7 @@ func (r *Registry) Call(ctx context.Context, name string, input json.RawMessage)
 		if result == nil || len(result.Models) == 0 {
 			return ErrorResult(&typesafe.ResponseValidationError{})
 		}
-		return Result{OK: true, Data: result}
+		return Result{OK: true, Data: result, Metadata: responseMetadata("", result.HTTP)}
 	case Evaluate:
 		var args struct {
 			State     json.RawMessage            `json:"state"`
@@ -207,14 +234,21 @@ func (r *Registry) Call(ctx context.Context, name string, input json.RawMessage)
 			}
 			questions[id] = object
 		}
+		if err := typesafe.ValidateQuestions(questions); err != nil {
+			return invalidArguments()
+		}
 		result, err := r.api.SystemOne(ctx, typesafe.SystemOneRequest{State: args.State, Questions: questions, Model: args.Model}, typesafe.WithRetry(typesafe.RetryPolicy{}))
 		if err != nil {
 			return ErrorResult(err)
 		}
 		if err := result.ValidateFor(questions); err != nil {
-			return ErrorResult(err)
+			out := ErrorResult(err)
+			if result != nil {
+				out.Metadata = responseMetadata(result.Model, result.HTTP)
+			}
+			return out
 		}
-		return Result{OK: true, Data: result}
+		return Result{OK: true, Data: result, Metadata: responseMetadata(result.Model, result.HTTP)}
 	case RouteTask:
 		var task agentpolicy.Task
 		if strictObject(input, &task) != nil || strings.TrimSpace(task.Text) == "" {
@@ -226,7 +260,10 @@ func (r *Registry) Call(ctx context.Context, name string, input json.RawMessage)
 			result.Data = decision // Keeps the fail-closed decision visible to the host.
 			return result
 		}
-		return Result{OK: true, Data: decision}
+		return Result{OK: true, Data: decision, Metadata: &Metadata{
+			RequestID: decision.RequestID, DurationMillis: decision.DurationMillis,
+			Attempts: decision.Attempts, Model: decision.Model, RubricVersion: decision.RubricVersion,
+		}}
 	default:
 		return Result{Error: &ToolError{Code: "unknown_tool", Message: "Unknown TypeSafe tool name.", RequiresReview: true}}
 	}

@@ -1,0 +1,151 @@
+name: Tag authorized v0.3.0 after main verification
+
+# One release only, explicitly authorized by the repository owner.
+# No PR code/artifacts are executed with a write token. Both named checks must
+# have passed on PR #4's exact main merge commit before the immutable tag is made.
+on:
+  workflow_run:
+    workflows: ['Documentation parity and full coverage']
+    types: [completed]
+    branches: [main]
+
+permissions: {}
+concurrency:
+  group: authorized-typesafe-v0.3.0-tag
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    if: >-
+      github.repository == 'PinableAgents/typesafe-sdk-go' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+      pull-requests: read
+    steps:
+      - name: Verify exact source and create immutable annotated tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERIFIED_RUN_ID: ${{ github.event.workflow_run.id }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+          import re
+          import urllib.error
+          import urllib.request
+
+          REPO = 'PinableAgents/typesafe-sdk-go'
+          VERSION = '0.3.0'
+          TAG = 'v' + VERSION
+          ROOT = 'https://api.github.com/repos/' + REPO
+
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  raise RuntimeError('Refusing API redirect')
+
+          opener = urllib.request.build_opener(NoRedirect())
+
+          def api(path, payload=None, missing_ok=False):
+              request = urllib.request.Request(
+                  ROOT + path,
+                  data=None if payload is None else json.dumps(payload).encode(),
+                  method='GET' if payload is None else 'POST',
+                  headers={
+                      'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+                      'Accept': 'application/vnd.github+json',
+                      'Content-Type': 'application/json',
+                      'User-Agent': 'typesafe-v0.3.0-release',
+                  },
+              )
+              try:
+                  with opener.open(request, timeout=30) as response:
+                      return json.load(response)
+              except urllib.error.HTTPError as error:
+                  if missing_ok and error.code == 404:
+                      return None
+                  # Do not log tokens, headers or response bodies.
+                  raise RuntimeError('GitHub API status ' + str(error.code)) from None
+
+          run_id = os.environ['VERIFIED_RUN_ID']
+          if not re.fullmatch(r'[0-9]+', run_id):
+              raise RuntimeError('Invalid workflow run ID')
+          run = api('/actions/runs/' + run_id)
+          if not (
+              run['event'] == 'push' and run['head_branch'] == 'main'
+              and run['status'] == 'completed' and run['conclusion'] == 'success'
+              and run['path'] == '.github/workflows/docs-parity.yml'
+              and run['repository']['full_name'] == REPO
+              and run['head_repository']['full_name'] == REPO
+          ):
+              raise RuntimeError('Not a successful trusted main quality run')
+          target = run['head_sha']
+          if not re.fullmatch(r'[0-9a-f]{40}', target):
+              raise RuntimeError('Invalid target commit')
+          pr = api('/pulls/4')
+          if not pr['merged'] or pr['merge_commit_sha'] != target:
+              print('No action: run is not the authorized PR #4 merge commit.')
+              raise SystemExit(0)
+          if pr['base']['repo']['full_name'] != REPO or pr['base']['ref'] != 'main':
+              raise RuntimeError('PR target does not match the authorized repository')
+
+          jobs = api('/actions/runs/' + run_id + '/jobs?filter=latest&per_page=100')
+          required = {'Full coverage (Go 1.23)', 'Official Python SDK differential contract'}
+          if jobs['total_count'] != len(jobs['jobs']):
+              raise RuntimeError('Incomplete workflow job list')
+          successful = {j['name'] for j in jobs['jobs']
+                        if j['status'] == 'completed' and j['conclusion'] == 'success'}
+          if not required.issubset(successful):
+              raise RuntimeError('Required release checks have not passed')
+
+          def source(path):
+              item = api('/contents/' + path + '?ref=' + target)
+              if item['encoding'] != 'base64':
+                  raise RuntimeError('Unexpected source encoding')
+              return base64.b64decode(item['content']).decode('utf-8')
+
+          version = re.search(r'\bVersion\s*=\s*"([^"]+)"', source('types.go'))
+          if version is None or version[1] != VERSION:
+              raise RuntimeError('SDK Version does not match the authorized tag')
+          if '<!-- sdk-version: ' + VERSION + ' -->' not in source('README.md'):
+              raise RuntimeError('README version mismatch')
+          if not re.search(r'(?m)^go 1\.23\s*$', source('go.mod')):
+              raise RuntimeError('Go language baseline changed')
+          if api('/git/ref/heads/main')['object']['sha'] != target:
+              raise RuntimeError('Main moved; refusing to tag an unreviewed target')
+
+          existing = api('/git/ref/tags/' + TAG, missing_ok=True)
+          if existing is not None:
+              obj = existing['object']
+              if obj['type'] == 'tag':
+                  obj = api('/git/tags/' + obj['sha'])['object']
+              if obj['type'] != 'commit' or obj['sha'] != target:
+                  raise RuntimeError('Tag already exists at a different commit; never move it')
+              print(TAG + ' already points to verified commit ' + target)
+              raise SystemExit(0)
+
+          annotation = api('/git/tags', {
+              'tag': TAG, 'type': 'commit', 'object': target,
+              'message': TAG + '\n\nPython v0.7.4 contract alignment, numerical validation, '
+                         'opt-in connection pooling and Agent metadata.\n'
+                         'Full coverage (Go 1.23) and official Python differential checks '
+                         'passed on this exact main merge commit.\n'
+                         'Verified workflow run: ' + run_id + '\n'
+                         'No claim of paid live API validation. Historical tags unchanged.\n',
+          })
+          ref = api('/git/refs', {'ref': 'refs/tags/' + TAG, 'sha': annotation['sha']})
+          if ref['object']['sha'] != annotation['sha']:
+              raise RuntimeError('Unexpected tag creation result')
+          print('Created ' + TAG + ' -> ' + target)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
+              summary.write('## Created ' + TAG + '\n\nCommit: `' + target
+                            + '`\n\nVerified quality run: ' + run_id
+                            + '\n\nNo existing tag was moved. No GitHub Release was created.\n')
+          PY
