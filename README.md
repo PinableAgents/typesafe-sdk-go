@@ -84,4 +84,6 @@ go run ./cmd/typesafe-tool --list
 正确性 CI 从单一 lock 安装固定 Python commit。周检独立跟踪动态网站/上游变化，不自动接受新基线或发版；不会因为新网页改变而悄悄改变固定契约。
 版本门禁检查 README/Version，tag 事件检查两者与标签一致。添加 workflow 不等于修改 required checks 或分支保护。
 
-本次授权的 `v0.3.0` 标签由 `tag-v0.3.0.yml` 在 PR #4 合并提交的完整质量和官方 Python 差分检查通过后创建。该入口仅处理此版本，不自动发布其他版本或创建 GitHub Release，也不会移动已有标签。
+`v0.3.0` 是通过 PR #4 的质量检查创建的历史标签，不会移动。后续稳定版本先在 PR 中同时修改 `types.go` 的 `Version` 和本文件的版本说明及 `sdk-version` 标记。这不是每次提交自动加版本：`Version` 也会作为真实请求发送给服务端，普通提交不会再创建一个与 SDK 自报版本不一致的标签。
+
+版本 PR 合并后，`auto-tag-main.yml` 只在同一个 `main` 提交的完整覆盖率（Go 1.23）和官方 Python SDK 差分检查均通过、且该提交仍是 `main` 最新提交时，按已审查的版本创建不可变的 `vX.Y.Z` 标签。它不构建发布产物、不创建 GitHub Release、不调用付费 API。无版本更新、检查失败或未通过的版本不会发标签。
