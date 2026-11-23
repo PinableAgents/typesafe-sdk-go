@@ -108,7 +108,7 @@ go test -run '^$' -bench BenchmarkPooledTransportRequests -benchmem .
 跨语言对照使用实际安装的固定 Python SDK + MockTransport，不是用 Python 仿写一个 SDK。Go 特有 context、连接池和 ValidateFor 浮点边界另有本地测试。
 
 CI 从 docs/parity-lock.json 读取唯一 Python commit。scripts/check_release.py 核对 README 与 Version；tag 事件还要求 tag 等于 v + Version。
-本次按用户授权发布 `v0.3.0` 标签：先同步 Version/README，再验证并合并 PR #4，只有主分支合并提交通过质量和 Python 差分检查才创建标签。专用 `tag-v0.3.0.yml` 只处理该版本；不移动旧标签，不创建 GitHub Release。后续版本仍需单独授权与验收。
+本次按用户授权发布 `v0.3.0` 标签：先同步 Version/README，再验证并合并 PR #4，只有主分支合并提交通过质量和 Python 差分检查才创建标签。当时的专用流程只处理该版本；不移动旧标签，不创建 GitHub Release。后续版本采用 [README 的主分支打标规则](../README.md)，仍需评审版本变更并通过相同验收。
 
 固定基线正确性 CI 不再查询变化中的网站。每周 docs-drift.yml 继续独立检查上游；仍不自动更新锁、合并或发版。
 **网站 18 项指纹保留 2026-09-22 的真实记录。** 本环境未能读取新版站点全文，不能只复制新哈希来假装完成网页复核。
