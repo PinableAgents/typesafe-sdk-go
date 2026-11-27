@@ -1,3 +1,8 @@
+# Pinable shared local files
+.codegraph/
+Thumbs.db
+[Dd]esktop.ini
+
 .env
 .env.*
 !.env.example
@@ -18,3 +23,8 @@ __pycache__/
 /qa-results/
 /parity-results/
 /.venv-parity/
+
+# Environment config templates (not credentials)
+!.env.sample
+!.env.template
+!.env.dist
